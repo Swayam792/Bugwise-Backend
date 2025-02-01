@@ -1,0 +1,30 @@
+package com.swayam.bugwise.entity;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.HashSet;
+import java.util.Set;
+
+@Entity
+@Table(name = "organizations")
+@Getter
+@Setter
+@NoArgsConstructor
+public class Organization extends BaseEntity {
+    @NotBlank(message = "Organization name cannot be blank")
+    @Column(unique = true)
+    private String name;
+
+    @NotBlank(message = "Description cannot be blank")
+    private String description;
+
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    private Set<Project> projects = new HashSet<>();
+
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    private Set<User> users = new HashSet<>();
+}

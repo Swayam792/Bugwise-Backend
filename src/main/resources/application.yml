@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: bugwise
+  datasource:
+    url: jdbc:postgres://avnadmin:AVNS_fQ2vFoJFXmRL4UvZUpY@bugwise-bugwise.c.aivencloud.com:17987/defaultdb?sslmode=require
+    username: avnadmin
+    password: AVNS_fQ2vFoJFXmRL4UvZUpY
+    driver-class-name: org.postgresql.Driver
+    jpa:
+      hibernate:
+        ddl-auto: update
+      properties:
+        hibernate:
+          dialect: org.hibernate.dialect.PostgreSQLDialect
+
+security:
+  jwt:
+    secret-key: 3ddihwjb23i3ihnsijw093nbdjkojoskh3
+    expiration-time: 3600000
