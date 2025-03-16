@@ -1,5 +1,7 @@
 package com.swayam.bugwise.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.swayam.bugwise.enums.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -8,16 +10,24 @@ import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 
 @Entity
 @Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
-public class User extends BaseEntity {
+@ToString
+public class User implements UserDetails {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(columnDefinition = "VARCHAR(36)")
+    private String id;
+
     @NotBlank(message = "Username cannot be blank")
     @Column(unique = true)
     private String username;
@@ -28,10 +38,6 @@ public class User extends BaseEntity {
     private String email;
 
     @NotBlank(message = "Password cannot be blank")
-    @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$",
-            message = "Password must be at least 8 characters long and include at least one uppercase letter, one lowercase letter, one number, and one special character"
-    )
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -39,13 +45,21 @@ public class User extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id")
+    @JsonBackReference
     private Organization organization;
 
     @OneToMany(mappedBy = "projectManager")
+    @JsonManagedReference
     private Set<Project> managedProjects = new HashSet<>();
 
     @OneToMany(mappedBy = "assignedDeveloper")
+    @JsonManagedReference
     private Set<Bug> assignedBugs = new HashSet<>();
 
-    private boolean isEnabled = true;
+    private boolean isActive = true;
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of();
+    }
 }

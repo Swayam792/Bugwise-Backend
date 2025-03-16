@@ -1,5 +1,6 @@
 package com.swayam.bugwise.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -23,8 +24,10 @@ public class Organization extends BaseEntity {
     private String description;
 
     @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private Set<Project> projects = new HashSet<>();
 
     @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    @JsonManagedReference
     private Set<User> users = new HashSet<>();
 }
