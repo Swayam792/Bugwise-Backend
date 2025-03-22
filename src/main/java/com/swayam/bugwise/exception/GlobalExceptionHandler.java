@@ -4,13 +4,16 @@ import com.swayam.bugwise.dto.ExceptionResponseDTO;
 import com.swayam.bugwise.dto.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -27,6 +30,30 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ValidationErrorResponseDTO> handleValidationExceptions(ValidationException ex) {
         return new ResponseEntity<>(new ValidationErrorResponseDTO("Validation failed", ex.getErrors()), HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ExceptionResponseDTO> handleAuthenticationException(AuthenticationException ex) {
+        ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO("Incorrect username/password");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(exceptionResponseDTO);
+    }
+
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ExceptionResponseDTO> handleNoSuchElementException(NoSuchElementException ex) {
+        ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO("Resource not found");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exceptionResponseDTO);
+    }
+
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ExceptionResponseDTO> handleUnauthorizedAccessException(UnauthorizedAccessException ex) {
+        ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exceptionResponseDTO);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ExceptionResponseDTO> handleNoHandlerFoundException(NoHandlerFoundException ex) {
+        ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO("Endpoint not found");
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(exceptionResponseDTO);
     }
 
     @ExceptionHandler(Exception.class)

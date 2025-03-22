@@ -19,17 +19,20 @@ public interface UserRepository extends JpaRepository<User, String> {
 
     List<User> findByOrganizationIdAndRole(String organizationId, UserRole role);
 
-    @Query(value = "SELECT u FROM User u WHERE u.organization.id = :orgId AND u.role = :role AND " +
+    @Query(value = "SELECT u FROM users u WHERE u.organization.id = :orgId AND u.role = :role AND " +
             "u.isEnabled = true", nativeQuery = true)
     List<User> findActiveUsersByOrganizationAndRole(
             @Param("orgId") String organizationId,
             @Param("role") UserRole role
     );
 
-    @Query(value = "SELECT COUNT(u) FROM User u WHERE u.organization.id = :orgId AND " +
+    @Query(value = "SELECT COUNT(u) FROM users u WHERE u.organization.id = :orgId AND " +
             "u.role = :role AND u.isEnabled = true", nativeQuery = true)
     long countActiveUsersByOrganizationAndRole(
             @Param("orgId") String organizationId,
             @Param("role") UserRole role
     );
+
+    @Query(value = "SELECT id FROM users WHERE username = :username", nativeQuery = true)
+    String getIdByUserName(@Param("username") String username);
 }

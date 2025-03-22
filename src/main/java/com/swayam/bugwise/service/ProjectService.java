@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -79,5 +80,16 @@ public class ProjectService {
 
     public List<Project> findByProjectManager(String projectManagerId) {
         return projectRepository.findByProjectManagerId(projectManagerId);
+    }
+
+    public List<ProjectDTO> getAllProjectsForAdmin(String adminUsername) {
+        String adminId = userRepository.getIdByUserName(adminUsername);
+
+        List<Organization> organizations = organizationRepository.findByAdminId(adminId);
+
+        return organizations.stream()
+                .flatMap(org -> projectRepository.findByOrganizationId(org.getId()).stream())
+                .map((project) -> DTOConverter.convertToDTO(project, ProjectDTO.class))
+                .collect(Collectors.toList());
     }
 }

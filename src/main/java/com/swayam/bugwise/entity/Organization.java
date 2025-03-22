@@ -30,4 +30,11 @@ public class Organization extends BaseEntity {
     @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
     @JsonManagedReference
     private Set<User> users = new HashSet<>();
+
+    @OneToOne
+    private User admin;
+
+    public boolean isAdmin(User user) {
+        return admin.equals(user);
+    }
 }

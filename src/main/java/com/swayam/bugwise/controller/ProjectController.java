@@ -10,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -53,5 +54,11 @@ public class ProjectController {
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
     public List<Project> findByProjectManager(@PathVariable String projectManagerId) {
         return projectService.findByProjectManager(projectManagerId);
+    }
+
+    @GetMapping("/admin")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<ProjectDTO>> getAllProjectsForAdmin(Authentication authentication) {
+        return ResponseEntity.ok(projectService.getAllProjectsForAdmin(authentication.getName()));
     }
 }

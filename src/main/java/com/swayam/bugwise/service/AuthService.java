@@ -48,7 +48,6 @@ public class AuthService {
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getUsername());
         String token = tokenProvider.generateToken(userDetails);
-        log.info("token: {}", token);
 
         User user = userRepository.findByUsername(loginRequest.getUsername())
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
