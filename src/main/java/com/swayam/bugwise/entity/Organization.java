@@ -27,8 +27,12 @@ public class Organization extends BaseEntity {
     @JsonManagedReference
     private Set<Project> projects = new HashSet<>();
 
-    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
-    @JsonManagedReference
+    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(
+            name = "organization_user",
+            joinColumns = @JoinColumn(name = "organization_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
     private Set<User> users = new HashSet<>();
 
     @OneToOne

@@ -56,9 +56,9 @@ public class ProjectController {
         return projectService.findByProjectManager(projectManagerId);
     }
 
-    @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ProjectDTO>> getAllProjectsForAdmin(Authentication authentication) {
-        return ResponseEntity.ok(projectService.getAllProjectsForAdmin(authentication.getName()));
+    @GetMapping("/my-projects")
+    public ResponseEntity<List<ProjectDTO>> getMyProjects(Authentication authentication) {
+        List<ProjectDTO> projects = projectService.getProjectsForUser(authentication.getName());
+        return ResponseEntity.ok(projects);
     }
 }

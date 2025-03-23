@@ -2,6 +2,7 @@ package com.swayam.bugwise.service;
 
 import com.swayam.bugwise.dto.ProjectDTO;
 import com.swayam.bugwise.dto.ProjectRequestDTO;
+import com.swayam.bugwise.dto.UserDTO;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.entity.User;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -91,5 +93,33 @@ public class ProjectService {
                 .flatMap(org -> projectRepository.findByOrganizationId(org.getId()).stream())
                 .map((project) -> DTOConverter.convertToDTO(project, ProjectDTO.class))
                 .collect(Collectors.toList());
+    }
+
+    public List<ProjectDTO> getProjectsForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == UserRole.ADMIN) {
+            return projectRepository.findAll().stream()
+                    .map(project -> new ProjectDTO(
+                            project.getName(),
+                            project.getDescription(),
+                            DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class)
+                    )).collect(Collectors.toList());
+        } else if (user.getRole() == UserRole.PROJECT_MANAGER || user.getRole() == UserRole.DEVELOPER || user.getRole() == UserRole.TESTER) {
+            Set<String> organizationIds = user.getOrganizations().stream()
+                    .map(Organization::getId)
+                    .collect(Collectors.toSet());
+
+            return projectRepository.findByOrganizationIdIn(organizationIds).stream()
+                    .map(project -> new ProjectDTO(
+                            project.getName(),
+                            project.getDescription(),
+                            DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class)
+                    ))
+                    .collect(Collectors.toList());
+        } else {
+            throw new RuntimeException("Invalid role");
+        }
     }
 }

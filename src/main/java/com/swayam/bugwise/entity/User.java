@@ -43,11 +43,6 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organization_id")
-    @JsonBackReference
-    private Organization organization;
-
     @OneToMany(mappedBy = "projectManager")
     @JsonManagedReference
     private Set<Project> managedProjects = new HashSet<>();
@@ -55,6 +50,9 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "assignedDeveloper")
     @JsonManagedReference
     private Set<Bug> assignedBugs = new HashSet<>();
+
+    @ManyToMany(mappedBy = "users")
+    private Set<Organization> organizations = new HashSet<>();
 
     private boolean isActive = true;
 

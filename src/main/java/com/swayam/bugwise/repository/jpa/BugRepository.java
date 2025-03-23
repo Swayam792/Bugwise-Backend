@@ -12,11 +12,12 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface BugRepository extends JpaRepository<Bug, String> {
 
-    @Query("SELECT b FROM Bug b WHERE " +
+    @Query(value = "SELECT b FROM Bug b WHERE " +
             "b.project.id = :projectId AND " +
             "b.severity = :severity AND " +
             "b.status NOT IN (:closed, :resolved)")
@@ -28,18 +29,27 @@ public interface BugRepository extends JpaRepository<Bug, String> {
     );
 
 
-    @Query("SELECT NEW com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) " +
+    @Query(value = "SELECT NEW com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) " +
             "FROM Bug b WHERE b.project.id = :projectId " +
             "GROUP BY b.status")
     List<BugStatisticsDTO> getBugStatisticsByProject(@Param("projectId") String projectId);
 
-    @Query("SELECT b FROM Bug b WHERE " +
+    @Query(value = "SELECT b FROM Bug b WHERE " +
             "b.project.id = :projectId AND " +
             "(LOWER(b.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(b.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+            "LOWER(b.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))", nativeQuery = true)
     Page<Bug> searchBugsInProject(
             @Param("projectId") String projectId,
             @Param("searchTerm") String searchTerm,
             Pageable pageable
     );
+
+    @Query(value = "SELECT b FROM Bug b WHERE b.project.id IN :projectIds", nativeQuery = true)
+    List<Bug> findByProjectIdIn(@Param("projectIds") Set<String> projectIds);
+
+    @Query(value = "SELECT new com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) FROM Bug b GROUP BY b.status")
+    List<BugStatisticsDTO> findBugStatistics();
+
+    @Query(value = "SELECT new com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) FROM Bug b WHERE b.project.id IN :projectIds GROUP BY b.status")
+    List<BugStatisticsDTO> findBugStatisticsByProjectIdIn(@Param("projectIds") Set<String> projectIds);
 }

@@ -36,11 +36,10 @@ public class OrganizationController {
         return ResponseEntity.ok(organizationService.getOrganization(organizationId, user));
     }
 
-    @GetMapping("/admin")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<OrganizationDTO>> getOrganizationsCreatedByAdmin(Authentication authentication) {
-        String adminId = authentication.getName();
-        return ResponseEntity.ok(organizationService.getOrganizationsCreatedByAdmin(adminId));
+    @GetMapping("/my-organizations")
+    public ResponseEntity<List<OrganizationDTO>> getMyOrganizations(Authentication authentication) {
+        List<OrganizationDTO> organizations = organizationService.getOrganizationsForUser(authentication.getName());
+        return ResponseEntity.ok(organizations);
     }
 }
 

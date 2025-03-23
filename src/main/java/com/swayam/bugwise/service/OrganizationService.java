@@ -4,6 +4,7 @@ import com.swayam.bugwise.dto.OrganizationDTO;
 import com.swayam.bugwise.dto.OrganizationRequestDTO;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.User;
+import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.exception.UnauthorizedAccessException;
 import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.OrganizationRepository;
@@ -57,11 +58,18 @@ public class OrganizationService {
         return DTOConverter.convertToDTO(organization, OrganizationDTO.class);
     }
 
-    public List<OrganizationDTO> getOrganizationsCreatedByAdmin(String adminUserName) {
-        String adminId = userRepository.getIdByUserName(adminUserName);
-        List<Organization> organizations = organizationRepository.findByAdminId(adminId);
-        return organizations.stream()
-                .map(org -> DTOConverter.convertToDTO(org, OrganizationDTO.class))
-                .collect(Collectors.toList());
+    public List<OrganizationDTO> getOrganizationsForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == UserRole.ADMIN) {
+            return organizationRepository.findAll().stream()
+                    .map(org -> new OrganizationDTO(org.getId(), org.getName()))
+                    .collect(Collectors.toList());
+        } else {
+            return user.getOrganizations().stream()
+                    .map(org -> new OrganizationDTO(org.getId(), org.getName()))
+                    .collect(Collectors.toList());
+        }
     }
 }

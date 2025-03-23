@@ -16,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -85,4 +86,14 @@ public class BugController {
         return ResponseEntity.ok(bugService.findActiveByProjectAndSeverity(projectId, severity));
     }
 
+    @GetMapping("/my-bugs")
+    public ResponseEntity<List<BugDTO>> getMyBugs(Authentication authentication) {
+        List<BugDTO> bugs = bugService.getBugsForUser(authentication.getName());
+        return ResponseEntity.ok(bugs);
+    }
+
+    @GetMapping("/my-bugs/statistics")
+    public ResponseEntity<List<BugStatisticsDTO>> getMyBugStatistics(Authentication authentication) {
+        return ResponseEntity.ok(bugService.getBugStatisticsForUser(authentication.getName()));
+    }
 }

@@ -181,4 +181,40 @@ public class BugService {
     public List<Bug> findActiveByProjectAndSeverity(String projectId, BugSeverity severity) {
         return bugRepository.findActiveByProjectAndSeverity(projectId, severity, BugStatus.CLOSED, BugStatus.RESOLVED);
     }
+
+    public List<BugDTO> getBugsForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == UserRole.ADMIN) {
+            return bugRepository.findAll().stream()
+                    .map(project -> DTOConverter.convertToDTO(project, BugDTO.class))
+                    .collect(Collectors.toList());
+        } else if (user.getRole() == UserRole.PROJECT_MANAGER || user.getRole() == UserRole.DEVELOPER || user.getRole() == UserRole.TESTER) {
+            Set<String> projectIds = user.getManagedProjects().stream()
+                    .map(Project::getId)
+                    .collect(Collectors.toSet());
+            return bugRepository.findByProjectIdIn(projectIds).stream()
+                    .map(project -> DTOConverter.convertToDTO(project, BugDTO.class))
+                    .collect(Collectors.toList());
+        } else {
+            throw new RuntimeException("Invalid role");
+        }
+    }
+
+    public List<BugStatisticsDTO> getBugStatisticsForUser(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getRole() == UserRole.ADMIN) {
+            return bugRepository.findBugStatistics();
+        } else if (user.getRole() == UserRole.PROJECT_MANAGER || user.getRole() == UserRole.DEVELOPER || user.getRole() == UserRole.TESTER) {
+            Set<String> projectIds = user.getManagedProjects().stream()
+                    .map(Project::getId)
+                    .collect(Collectors.toSet());
+            return bugRepository.findBugStatisticsByProjectIdIn(projectIds);
+        } else {
+            throw new RuntimeException("Invalid role");
+        }
+    }
 }

@@ -13,4 +13,6 @@ public interface OrganizationRepository extends JpaRepository<Organization, Stri
 
     @Query(value = "select * from organizations where admin_id = :adminId", nativeQuery = true)
     List<Organization> findByAdminId(@Param("adminId") String adminId);
+
+    List<Organization> findByAdmin(User admin);
 }

@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, String> {
@@ -26,4 +27,6 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
 
     @Query("SELECT COUNT(p) FROM Project p WHERE p.organization.id = :orgId")
     long countProjectsByOrganization(@Param("orgId") String organizationId);
+
+    List<Project> findByOrganizationIdIn(Set<String> organizationIds);
 }

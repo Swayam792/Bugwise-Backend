@@ -9,15 +9,13 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByUsername(String username);
-    Optional<User> findByEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
-
-    List<User> findByOrganizationIdAndRole(String organizationId, UserRole role);
 
     @Query(value = "SELECT u FROM users u WHERE u.organization.id = :orgId AND u.role = :role AND " +
             "u.isEnabled = true", nativeQuery = true)
@@ -26,13 +24,16 @@ public interface UserRepository extends JpaRepository<User, String> {
             @Param("role") UserRole role
     );
 
-    @Query(value = "SELECT COUNT(u) FROM users u WHERE u.organization.id = :orgId AND " +
-            "u.role = :role AND u.isEnabled = true", nativeQuery = true)
-    long countActiveUsersByOrganizationAndRole(
-            @Param("orgId") String organizationId,
-            @Param("role") UserRole role
-    );
-
     @Query(value = "SELECT id FROM users WHERE username = :username", nativeQuery = true)
     String getIdByUserName(@Param("username") String username);
+
+    @Query(value = "SELECT COUNT(u.id) FROM users u " +
+            "JOIN organization_user ou ON u.id = ou.user_id " +
+            "JOIN organizations o ON ou.organization_id = o.id " +
+            "WHERE o.id = :organizationId AND u.role = :role AND u.is_active = true",
+            nativeQuery = true)
+    long countActiveUsersByOrganizationsAndRole(@Param("organizationId") String organizationId, @Param("role") String role);
+
+    @Query(value = "SELECT COUNT(u) FROM User u JOIN u.assignedBugs b WHERE b.project.id IN :projectIds AND u.role = :role AND u.isActive = true",nativeQuery = true)
+    long countActiveUsersByProjectsAndRole(@Param("projectIds") Set<String> projectIds, @Param("role") UserRole role);
 }
