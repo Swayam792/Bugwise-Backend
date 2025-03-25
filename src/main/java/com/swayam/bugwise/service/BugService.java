@@ -3,10 +3,7 @@ package com.swayam.bugwise.service;
 import co.elastic.clients.elasticsearch._types.SortOptions;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.swayam.bugwise.dto.*;
-import com.swayam.bugwise.entity.Bug;
-import com.swayam.bugwise.entity.BugDocument;
-import com.swayam.bugwise.entity.Project;
-import com.swayam.bugwise.entity.User;
+import com.swayam.bugwise.entity.*;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.enums.UserRole;
@@ -22,7 +19,9 @@ import org.elasticsearch.index.query.QueryBuilder;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -124,8 +123,8 @@ public class BugService {
     }
 
     private User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByUsername(username)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
@@ -182,28 +181,51 @@ public class BugService {
         return bugRepository.findActiveByProjectAndSeverity(projectId, severity, BugStatus.CLOSED, BugStatus.RESOLVED);
     }
 
-    public List<BugDTO> getBugsForUser(String username) {
-        User user = userRepository.findByUsername(username)
+    public Page<BugDTO> getBugsForUser(String email, Integer page, Integer size) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        Pageable pageable = PageRequest.of(page, size);
+
         if (user.getRole() == UserRole.ADMIN) {
-            return bugRepository.findAll().stream()
-                    .map(project -> DTOConverter.convertToDTO(project, BugDTO.class))
-                    .collect(Collectors.toList());
+            Set<String> organizationIds = user.getOrganizations().stream()
+                    .map(Organization::getId)
+                    .collect(Collectors.toSet());
+
+            return bugRepository.findByProjectOrganizationIdIn(organizationIds, pageable)
+                    .map(bug -> {
+                        BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
+                        // Set additional fields
+                        dto.setProjectName(bug.getProject().getName());
+                        dto.setOrganizationName(bug.getProject().getOrganization().getName());
+                        if (bug.getProject().getProjectManager() != null) {
+                            dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
+                        }
+                        return dto;
+                    });
         } else if (user.getRole() == UserRole.PROJECT_MANAGER || user.getRole() == UserRole.DEVELOPER || user.getRole() == UserRole.TESTER) {
             Set<String> projectIds = user.getManagedProjects().stream()
                     .map(Project::getId)
                     .collect(Collectors.toSet());
-            return bugRepository.findByProjectIdIn(projectIds).stream()
-                    .map(project -> DTOConverter.convertToDTO(project, BugDTO.class))
-                    .collect(Collectors.toList());
+
+            return bugRepository.findByProjectIdIn(projectIds, pageable)
+                    .map(bug -> {
+                        BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
+                        // Set additional fields
+                        dto.setProjectName(bug.getProject().getName());
+                        dto.setOrganizationName(bug.getProject().getOrganization().getName());
+                        if (bug.getProject().getProjectManager() != null) {
+                            dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
+                        }
+                        return dto;
+                    });
         } else {
             throw new RuntimeException("Invalid role");
         }
     }
 
-    public List<BugStatisticsDTO> getBugStatisticsForUser(String username) {
-        User user = userRepository.findByUsername(username)
+    public List<BugStatisticsDTO> getBugStatisticsForUser(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getRole() == UserRole.ADMIN) {

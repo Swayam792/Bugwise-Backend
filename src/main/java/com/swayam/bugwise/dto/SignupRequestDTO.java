@@ -10,9 +10,6 @@ import java.util.UUID;
 
 @Data
 public class SignupRequestDTO {
-    @NotBlank(message = "Username is required")
-    private String username;
-
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
     private String email;

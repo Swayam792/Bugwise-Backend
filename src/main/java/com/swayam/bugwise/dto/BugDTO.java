@@ -24,4 +24,7 @@ public class BugDTO implements Serializable {
     private BugSeverity severity;
     private UserDTO assignedDeveloper;
     private Set<CommentDTO> comments = new HashSet<>();
+    private String projectName;
+    private String projectManagerName;
+    private String organizationName;
 }

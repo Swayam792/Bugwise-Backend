@@ -84,19 +84,8 @@ public class ProjectService {
         return projectRepository.findByProjectManagerId(projectManagerId);
     }
 
-    public List<ProjectDTO> getAllProjectsForAdmin(String adminUsername) {
-        String adminId = userRepository.getIdByUserName(adminUsername);
-
-        List<Organization> organizations = organizationRepository.findByAdminId(adminId);
-
-        return organizations.stream()
-                .flatMap(org -> projectRepository.findByOrganizationId(org.getId()).stream())
-                .map((project) -> DTOConverter.convertToDTO(project, ProjectDTO.class))
-                .collect(Collectors.toList());
-    }
-
-    public List<ProjectDTO> getProjectsForUser(String username) {
-        User user = userRepository.findByUsername(username)
+    public List<ProjectDTO> getProjectsForUser(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getRole() == UserRole.ADMIN) {

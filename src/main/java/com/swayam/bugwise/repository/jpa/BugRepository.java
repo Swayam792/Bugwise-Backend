@@ -28,7 +28,6 @@ public interface BugRepository extends JpaRepository<Bug, String> {
             @Param("resolved") BugStatus resolved
     );
 
-
     @Query(value = "SELECT NEW com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) " +
             "FROM Bug b WHERE b.project.id = :projectId " +
             "GROUP BY b.status")
@@ -44,12 +43,23 @@ public interface BugRepository extends JpaRepository<Bug, String> {
             Pageable pageable
     );
 
-    @Query(value = "SELECT b FROM Bug b WHERE b.project.id IN :projectIds", nativeQuery = true)
-    List<Bug> findByProjectIdIn(@Param("projectIds") Set<String> projectIds);
-
     @Query(value = "SELECT new com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) FROM Bug b GROUP BY b.status")
     List<BugStatisticsDTO> findBugStatistics();
 
     @Query(value = "SELECT new com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) FROM Bug b WHERE b.project.id IN :projectIds GROUP BY b.status")
     List<BugStatisticsDTO> findBugStatisticsByProjectIdIn(@Param("projectIds") Set<String> projectIds);
+
+    @Query("SELECT b FROM Bug b " +
+            "JOIN FETCH b.project p " +
+            "JOIN FETCH p.organization o " +
+            "LEFT JOIN FETCH p.projectManager pm " +
+            "WHERE p.organization.id IN :organizationIds")
+    Page<Bug> findByProjectOrganizationIdIn(@Param("organizationIds") Set<String> organizationIds, Pageable pageable);
+
+    @Query("SELECT b FROM Bug b " +
+            "JOIN FETCH b.project p " +
+            "JOIN FETCH p.organization o " +
+            "LEFT JOIN FETCH p.projectManager pm " +
+            "WHERE p.id IN :projectIds")
+    Page<Bug> findByProjectIdIn(@Param("projectIds") Set<String> projectIds, Pageable pageable);
 }

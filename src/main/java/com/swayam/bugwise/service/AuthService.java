@@ -39,53 +39,44 @@ public class AuthService {
     public AuthResponseDTO login(LoginRequestDTO loginRequest) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        loginRequest.getUsername(),
+                        loginRequest.getEmail(),
                         loginRequest.getPassword()
                 )
         );
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getUsername());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
         String token = tokenProvider.generateToken(userDetails);
 
-        User user = userRepository.findByUsername(loginRequest.getUsername())
+        User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        return new AuthResponseDTO(token, user.getUsername(), user.getRole());
+        return new AuthResponseDTO(token, user.getEmail(), user.getRole());
     }
 
     @Transactional
     public AuthResponseDTO signup(SignupRequestDTO signupRequest) {
-        if (userRepository.existsByUsername(signupRequest.getUsername())) {
-            throw new ValidationException(Map.of("username", "Username is already taken"));
-        }
-
         if (userRepository.existsByEmail(signupRequest.getEmail())) {
             throw new ValidationException(Map.of("email", "Email is already registered"));
         }
 
-//        Organization organization = organizationRepository.findById(signupRequest.getOrganizationId())
-//                .orElseThrow(() -> new NoSuchElementException("Organization not found"));
-
         User user = new User();
-        user.setUsername(signupRequest.getUsername());
         user.setEmail(signupRequest.getEmail());
         user.setPassword(passwordEncoder.encode(signupRequest.getPassword()));
-//        user.setOrganization(organization);
         if(signupRequest.getRole() != null){
             user.setRole(signupRequest.getRole());
         }else{
-            user.setRole(UserRole.DEVELOPER); // Default role
+            user.setRole(UserRole.DEVELOPER);
         }
 
         user.setActive(true);
 
         User savedUser = userRepository.save(user);
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getUsername());
+        UserDetails userDetails = userDetailsService.loadUserByUsername(savedUser.getEmail());
         String token = tokenProvider.generateToken(userDetails);
 
-        return new AuthResponseDTO(token, savedUser.getUsername(), savedUser.getRole());
+        return new AuthResponseDTO(token, savedUser.getEmail(), savedUser.getRole());
     }
 }

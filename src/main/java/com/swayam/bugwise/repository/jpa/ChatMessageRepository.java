@@ -16,6 +16,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, String
             "WHERE cm.bug.id = :bugId " +
             "AND cm.sender.id = :userId " +
             "AND :userId NOT IN (SELECT r FROM cm.readBy r)", nativeQuery = true)
-    List<ChatMessage> findUnreadMessagesByBugAndSender(@Param("bugId") String bugId, @Param("userId") String userId);
-
+    List<ChatMessage> findUnreadMessagesByBugAndSender(
+            @Param("bugId") String bugId,
+            @Param("userId") String userId
+    );
 }

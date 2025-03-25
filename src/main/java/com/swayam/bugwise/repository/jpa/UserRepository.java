@@ -13,27 +13,33 @@ import java.util.Set;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, String> {
-    Optional<User> findByUsername(String username);
-    boolean existsByUsername(String username);
+    Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
-    @Query(value = "SELECT u FROM users u WHERE u.organization.id = :orgId AND u.role = :role AND " +
-            "u.isEnabled = true", nativeQuery = true)
+    @Query(value = "SELECT u FROM User u WHERE u.organizations.id = :orgId AND u.role = :role AND " +
+            "u.isActive = true", nativeQuery = true)
     List<User> findActiveUsersByOrganizationAndRole(
             @Param("orgId") String organizationId,
             @Param("role") UserRole role
     );
 
-    @Query(value = "SELECT id FROM users WHERE username = :username", nativeQuery = true)
-    String getIdByUserName(@Param("username") String username);
+    @Query(value = "SELECT id FROM users WHERE email = :email", nativeQuery = true)
+    String getIdByEmail(@Param("email") String email);
 
     @Query(value = "SELECT COUNT(u.id) FROM users u " +
             "JOIN organization_user ou ON u.id = ou.user_id " +
             "JOIN organizations o ON ou.organization_id = o.id " +
             "WHERE o.id = :organizationId AND u.role = :role AND u.is_active = true",
             nativeQuery = true)
-    long countActiveUsersByOrganizationsAndRole(@Param("organizationId") String organizationId, @Param("role") String role);
+    long countActiveUsersByOrganizationsAndRole(
+            @Param("organizationId") String organizationId,
+            @Param("role") String role
+    );
 
-    @Query(value = "SELECT COUNT(u) FROM User u JOIN u.assignedBugs b WHERE b.project.id IN :projectIds AND u.role = :role AND u.isActive = true",nativeQuery = true)
-    long countActiveUsersByProjectsAndRole(@Param("projectIds") Set<String> projectIds, @Param("role") UserRole role);
+    @Query(value = "SELECT COUNT(u) FROM User u JOIN u.assignedBugs b " +
+            "WHERE b.project.id IN :projectIds AND u.role = :role AND u.isActive = true")
+    long countActiveUsersByProjectsAndRole(
+            @Param("projectIds") Set<String> projectIds,
+            @Param("role") UserRole role
+    );
 }

@@ -10,6 +10,7 @@ import com.swayam.bugwise.repository.jpa.OrganizationRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,18 +33,13 @@ public class UserService {
     }
 
     public User getCurrentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return userRepository.findByUsername(username)
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
     }
 
-    public User getUserByUsername(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new NoSuchElementException("User not found"));
-    }
-
-    public UserDetailsDTO getCurrentUserDetails(String username) {
-        User user = userRepository.findByUsername(username)
+    public UserDetailsDTO getCurrentUserDetails(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String userId = user.getId();
@@ -60,7 +56,7 @@ public class UserService {
     }
 
     public Map<UserRole, Long> getDescendantUserCount(String username) {
-        User currentUser = getUserByUsername(username);
+        User currentUser = userRepository.findByEmail(username).orElseThrow(() -> new UsernameNotFoundException("User not found"));
         Map<UserRole, Long> descendantCount = new EnumMap<>(UserRole.class);
 
         if (currentUser.getRole() == UserRole.ADMIN) {
@@ -89,5 +85,9 @@ public class UserService {
         }
 
         return descendantCount;
+    }
+
+    public User getUserByEmail(String email){
+        return userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 }

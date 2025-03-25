@@ -28,10 +28,6 @@ public class User implements UserDetails {
     @Column(columnDefinition = "VARCHAR(36)")
     private String id;
 
-    @NotBlank(message = "Username cannot be blank")
-    @Column(unique = true)
-    private String username;
-
     @NotBlank(message = "Email cannot be blank")
     @Email(message = "Email should be valid")
     @Column(unique = true)
@@ -55,6 +51,11 @@ public class User implements UserDetails {
     private Set<Organization> organizations = new HashSet<>();
 
     private boolean isActive = true;
+
+    @Override
+    public String getUsername() {
+        return email;
+    }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

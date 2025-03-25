@@ -81,19 +81,19 @@ public class ChatService {
         }
     }
 
-    public void handleUserJoin(String bugId, String username) {
+    public void handleUserJoin(String bugId, String email) {
         try {
             CopyOnWriteArrayList<String> participants = activeBugParticipants.computeIfAbsent(
                     bugId, k -> new CopyOnWriteArrayList<>()
             );
 
-            if (participants.addIfAbsent(username)) {
+            if (participants.addIfAbsent(email)) {
                 Bug bug = bugRepository.findById(bugId)
                         .orElseThrow(() -> new ResourceNotFoundException("Bug not found with id: " + bugId));
 
                 ChatMessage joinMessage = ChatMessage.builder()
                         .bug(bug)
-                        .sender(userService.getUserByUsername(username))
+                        .sender(userService.getUserByEmail(email))
                         .type(MessageType.JOIN)
                         .createdAt(LocalDateTime.now())
                         .build();
@@ -106,7 +106,7 @@ public class ChatService {
                 ParticipantsUpdateDTO updateDTO = new ParticipantsUpdateDTO(
                         bugId,
                         new ArrayList<>(participants),
-                        username,
+                        email,
                         ParticipantAction.JOIN
                 );
 
@@ -130,17 +130,17 @@ public class ChatService {
         }
     }
 
-    public void handleUserLeave(String bugId, String username) {
+    public void handleUserLeave(String bugId, String email) {
         try {
             CopyOnWriteArrayList<String> participants = activeBugParticipants.get(bugId);
-            if (participants != null && participants.remove(username)) {
+            if (participants != null && participants.remove(email)) {
 
                 Bug bug = bugRepository.findById(bugId)
                         .orElseThrow(() -> new ResourceNotFoundException("Bug not found with id: " + bugId));
 
                 ChatMessage leaveMessage = ChatMessage.builder()
                         .bug(bug)
-                        .sender(userService.getUserByUsername(username))
+                        .sender(userService.getUserByEmail(email))
                         .type(MessageType.LEAVE)
                         .createdAt(LocalDateTime.now())
                         .build();
@@ -152,7 +152,7 @@ public class ChatService {
                 ParticipantsUpdateDTO updateDTO = new ParticipantsUpdateDTO(
                         bugId,
                         new ArrayList<>(participants),
-                        username,
+                        email,
                         ParticipantAction.LEAVE
                 );
 
@@ -168,15 +168,15 @@ public class ChatService {
         }
     }
 
-    public void sendTypingNotification(String bugId, String username) {
+    public void sendTypingNotification(String bugId, String email) {
         try {
             if (!activeBugParticipants.containsKey(bugId) ||
-                    !activeBugParticipants.get(bugId).contains(username)) {
+                    !activeBugParticipants.get(bugId).contains(email)) {
                 return;
             }
 
             ChatMessage typingMessage = ChatMessage.builder()
-                    .sender(userService.getUserByUsername(username))
+                    .sender(userService.getUserByEmail(email))
                     .type(MessageType.TYPING)
                     .build();
 

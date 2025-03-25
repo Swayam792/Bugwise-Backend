@@ -58,8 +58,8 @@ public class OrganizationService {
         return DTOConverter.convertToDTO(organization, OrganizationDTO.class);
     }
 
-    public List<OrganizationDTO> getOrganizationsForUser(String username) {
-        User user = userRepository.findByUsername(username)
+    public List<OrganizationDTO> getOrganizationsForUser(String email) {
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         if (user.getRole() == UserRole.ADMIN) {

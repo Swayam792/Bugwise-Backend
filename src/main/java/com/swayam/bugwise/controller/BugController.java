@@ -14,6 +14,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedResourcesAssembler;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -86,9 +89,13 @@ public class BugController {
         return ResponseEntity.ok(bugService.findActiveByProjectAndSeverity(projectId, severity));
     }
 
-    @GetMapping("/my-bugs")
-    public ResponseEntity<List<BugDTO>> getMyBugs(Authentication authentication) {
-        List<BugDTO> bugs = bugService.getBugsForUser(authentication.getName());
+    @GetMapping("/my-bugs/latest")
+    public ResponseEntity<Page<BugDTO>> getMyBugs(
+            Authentication authentication,
+            @RequestParam(value = "page", defaultValue = "0") Integer page,
+            @RequestParam(value = "size", defaultValue = "5") Integer size) {
+
+        Page<BugDTO> bugs = bugService.getBugsForUser(authentication.getName(), page, size);
         return ResponseEntity.ok(bugs);
     }
 
