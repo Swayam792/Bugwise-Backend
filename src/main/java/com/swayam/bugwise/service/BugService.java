@@ -24,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,9 +46,11 @@ public class BugService {
     private final BugDocumentRepository bugDocumentRepository;
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
+    private final ElasticsearchOperations elasticsearchOperations;
 
-    public Bug createBug(BugRequestDTO request) {
-        User currentUser = getCurrentUser();
+    public Bug createBug(BugRequestDTO request, String email) {
+        User currentUser = userRepository.findByEmail(email).orElseThrow(() ->
+                new NoSuchElementException("User not found"));
         validateUserCanCreateBug(currentUser);
 
         Bug bug = new Bug();
@@ -55,6 +58,7 @@ public class BugService {
         bug.setDescription(request.getDescription());
         bug.setStatus(BugStatus.NEW);
         bug.setSeverity(request.getSeverity());
+        bug.setReportedBy(currentUser);
 
         Project project = projectRepository.findById(request.getProjectId())
                 .orElseThrow(() -> new NoSuchElementException("Project not found with id " + request.getProjectId()));
@@ -67,7 +71,7 @@ public class BugService {
     }
 
     @CacheEvict(value = "bugs", key = "#bugId")
-    public Bug updateBug(String bugId, BugRequestDTO request) {
+    public BugDTO updateBug(String bugId, BugRequestDTO request) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
         validateUserCanUpdateBug(bug);
@@ -78,23 +82,49 @@ public class BugService {
 
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
-        return updatedBug;
+        return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 
     @Cacheable(value = "bugs", key = "#bugId")
     public BugDTO getBug(String bugId) {
-        log.info("Fetching bug from database: {}", bugId);
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found with id: " + bugId));
         return DTOConverter.convertToDTO(bug, BugDTO.class);
     }
 
-    public List<BugDocument> searchBugs(String query) {
-        return bugDocumentRepository.findByTitleContainingOrDescriptionContaining(query);
+    private void indexBugInElasticsearch(Bug bug) {
+        BugDocument bugDocument = new BugDocument();
+        bugDocument.setId(bug.getId());
+        bugDocument.setTitle(bug.getTitle());
+        bugDocument.setDescription(bug.getDescription());
+        bugDocument.setStatus(bug.getStatus());
+        bugDocument.setSeverity(bug.getSeverity());
+        bugDocument.setProjectId(bug.getProject().getId());
+        bugDocument.setProjectName(bug.getProject().getName());
+        bugDocument.setCreatedAt(bug.getCreatedAt());
+        bugDocument.setUpdatedAt(bug.getUpdatedAt());
+
+        if (bug.getAssignedDeveloper() != null) {
+            bugDocument.setAssignedDeveloperId(bug.getAssignedDeveloper().getId());
+            bugDocument.setAssignedDeveloperEmail(bug.getAssignedDeveloper().getEmail());
+        }
+
+        if (bug.getReportedBy() != null) {
+            bugDocument.setReportedById(bug.getReportedBy().getId());
+        }
+
+        if (bug.getProject().getOrganization() != null) {
+            BugDocument.OrganizationRef orgRef = new BugDocument.OrganizationRef();
+            orgRef.setId(bug.getProject().getOrganization().getId());
+            orgRef.setName(bug.getProject().getOrganization().getName());
+            bugDocument.setOrganization(orgRef);
+        }
+
+        bugDocumentRepository.save(bugDocument);
     }
 
     @CacheEvict(value = "bugs", key = "#bugId")
-    public Bug assignBug(String bugId, String developerId) {
+    public BugDTO assignBug(String bugId, String developerId) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
         User developer = userRepository.findById(developerId)
@@ -103,15 +133,15 @@ public class BugService {
         validateDeveloperAssignment(developer);
 
         bug.setAssignedDeveloper(developer);
-        bug.setStatus(BugStatus.ASSIGNED);
+        bug.setStatus(BugStatus.OPEN);
 
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
-        return updatedBug;
+        return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 
     @CacheEvict(value = "bugs", key = "#bugId")
-    public Bug updateBugStatus(String bugId, BugStatus newStatus) {
+    public BugDTO updateBugStatus(String bugId, BugStatus newStatus) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
         validateStatusTransition(bug, newStatus);
@@ -119,7 +149,7 @@ public class BugService {
         bug.setStatus(newStatus);
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
-        return updatedBug;
+        return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 
     private User getCurrentUser() {
@@ -158,34 +188,19 @@ public class BugService {
         }
     }
 
-    private void indexBugInElasticsearch(Bug bug) {
-        BugDocument bugDocument = new BugDocument();
-        bugDocument.setId(bug.getId());
-        bugDocument.setTitle(bug.getTitle());
-        bugDocument.setDescription(bug.getDescription());
-        bugDocument.setStatus(bug.getStatus());
-        bugDocument.setSeverity(bug.getSeverity());
-
-        bugDocumentRepository.save(bugDocument);
-    }
-
-    public Page<Bug> searchBugsInProject(String projectId, String searchTerm, Pageable pageable) {
-        return bugRepository.searchBugsInProject(projectId, searchTerm, pageable);
-    }
-
     public List<BugStatisticsDTO> getBugStatistics(String projectId) {
         return bugRepository.getBugStatisticsByProject(projectId);
     }
 
-    public List<Bug> findActiveByProjectAndSeverity(String projectId, BugSeverity severity) {
-        return bugRepository.findActiveByProjectAndSeverity(projectId, severity, BugStatus.CLOSED, BugStatus.RESOLVED);
+    public Page<BugDTO> findActiveByProjectAndSeverity(String projectId, BugSeverity severity, Pageable pageable) {
+        Page<Bug> bugs = bugRepository.findActiveByProjectAndSeverity(projectId, severity, BugStatus.CLOSED, BugStatus.RESOLVED, pageable);
+        return bugs.map(bug -> DTOConverter.convertToDTO(bug, BugDTO.class));
     }
 
-    public Page<BugDTO> getBugsForUser(String email, Integer page, Integer size) {
+
+    public Page<BugDTO> getBugsForUser(String email, Pageable pageable) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-
-        Pageable pageable = PageRequest.of(page, size);
 
         if (user.getRole() == UserRole.ADMIN) {
             Set<String> organizationIds = user.getOrganizations().stream()
@@ -195,7 +210,6 @@ public class BugService {
             return bugRepository.findByProjectOrganizationIdIn(organizationIds, pageable)
                     .map(bug -> {
                         BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-                        // Set additional fields
                         dto.setProjectName(bug.getProject().getName());
                         dto.setOrganizationName(bug.getProject().getOrganization().getName());
                         if (bug.getProject().getProjectManager() != null) {
@@ -211,7 +225,6 @@ public class BugService {
             return bugRepository.findByProjectIdIn(projectIds, pageable)
                     .map(bug -> {
                         BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-                        // Set additional fields
                         dto.setProjectName(bug.getProject().getName());
                         dto.setOrganizationName(bug.getProject().getOrganization().getName());
                         if (bug.getProject().getProjectManager() != null) {
@@ -238,5 +251,102 @@ public class BugService {
         } else {
             throw new RuntimeException("Invalid role");
         }
+    }
+
+    public Page<BugDTO> searchBugsInProject(String projectId, String searchTerm, String status, Pageable pageable) {
+        List<String> bugIds = searchBugDocumentsInProject(projectId, searchTerm);
+
+        Specification<Bug> spec = Specification.where((root, query, cb) ->
+                cb.equal(root.get("project").get("id"), projectId));
+
+        if (!bugIds.isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    root.get("id").in(bugIds));
+        }
+
+        if (status != null && !status.isEmpty()) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("status"), BugStatus.valueOf(status)));
+        }
+
+        return bugRepository.findAll(spec, pageable)
+                .map(bug -> DTOConverter.convertToDTO(bug, BugDTO.class));
+    }
+
+    private List<String> searchBugDocumentsInProject(String projectId, String searchTerm) {
+        if (searchTerm == null || searchTerm.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .bool(b -> b
+                                .must(m -> m
+                                        .term(t -> t
+                                                .field("projectId")
+                                                .value(projectId)
+                                        )
+                                )
+                                .must(m -> q
+                                        .multiMatch(mm -> mm
+                                                .fields("title", "description")
+                                                .query(searchTerm)
+                                        )
+                                )
+                        )
+                )
+                .build();
+
+        SearchHits<BugDocument> hits = elasticsearchOperations.search(query, BugDocument.class);
+        return hits.stream()
+                .map(SearchHit::getId)
+                .collect(Collectors.toList());
+    }
+
+    public Page<BugDTO> getAssignedBugsForDeveloper(String developerId, Pageable pageable) {
+        NativeQuery query = NativeQuery.builder()
+                .withQuery(q -> q
+                        .term(t -> t
+                                .field("assignedDeveloperId")
+                                .value(developerId)
+                        )
+                )
+                .build();
+
+        SearchHits<BugDocument> hits = elasticsearchOperations.search(query, BugDocument.class);
+        List<String> bugIds = hits.stream()
+                .map(SearchHit::getId)
+                .collect(Collectors.toList());
+
+        if (bugIds.isEmpty()) {
+            return Page.empty(pageable);
+        }
+
+        return bugRepository.findByIdIn(bugIds, pageable)
+                .map(bug -> DTOConverter.convertToDTO(bug, BugDTO.class));
+    }
+
+    public Page<BugDTO> getAssignedBugsForDeveloperInProject(String email, String projectId, Pageable pageable) {
+        User developer = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+        boolean isAssignedToProject = developer.getManagedProjects().stream()
+                .anyMatch(p -> p.getId().equals(projectId));
+
+        if (!isAssignedToProject) {
+            throw new ValidationException(Map.of("error", "Developer is not assigned to this project"));
+        }
+
+        Page<Bug> bugs = bugRepository.findByProjectIdAndAssignedDeveloperId(projectId, developer.getId(), pageable);
+
+        return bugs.map(bug -> {
+            BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
+            dto.setProjectName(bug.getProject().getName());
+            dto.setOrganizationName(bug.getProject().getOrganization().getName());
+            if (bug.getProject().getProjectManager() != null) {
+                dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
+            }
+            return dto;
+        });
     }
 }

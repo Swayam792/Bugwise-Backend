@@ -2,10 +2,13 @@ package com.swayam.bugwise.service;
 
 import com.swayam.bugwise.dto.ProjectDTO;
 import com.swayam.bugwise.dto.ProjectRequestDTO;
+import com.swayam.bugwise.dto.ProjectStatsDTO;
 import com.swayam.bugwise.dto.UserDTO;
+import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.entity.User;
+import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.OrganizationRepository;
@@ -110,5 +113,37 @@ public class ProjectService {
         } else {
             throw new RuntimeException("Invalid role");
         }
+    }
+
+    public List<ProjectStatsDTO> getProjectStats(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Project> projects;
+
+        if (user.getRole() == UserRole.ADMIN) {
+            Set<String> organizationIds = user.getOrganizations().stream()
+                    .map(Organization::getId)
+                    .collect(Collectors.toSet());
+            projects = projectRepository.findByOrganizationIdIn(organizationIds);
+        } else {
+            if (user.getRole() == UserRole.PROJECT_MANAGER) {
+                projects = projectRepository.findByProjectManagerId(user.getId());
+            } else {
+                projects = projectRepository.findByAssignedBugsDeveloperId(user.getId());
+            }
+        }
+
+        return projects.stream().map(project -> {
+            Map<BugStatus, Long> statusCounts = project.getBugs().stream()
+                    .collect(Collectors.groupingBy(Bug::getStatus, Collectors.counting()));
+
+            return new ProjectStatsDTO(
+                    project.getName(),
+                    statusCounts.getOrDefault(BugStatus.OPEN, 0L).intValue(),
+                    statusCounts.getOrDefault(BugStatus.IN_PROGRESS, 0L).intValue(),
+                    statusCounts.getOrDefault(BugStatus.RESOLVED, 0L).intValue()
+            );
+        }).collect(Collectors.toList());
     }
 }

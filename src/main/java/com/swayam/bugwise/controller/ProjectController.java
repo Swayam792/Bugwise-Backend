@@ -2,6 +2,7 @@ package com.swayam.bugwise.controller;
 
 import com.swayam.bugwise.dto.ProjectDTO;
 import com.swayam.bugwise.dto.ProjectRequestDTO;
+import com.swayam.bugwise.dto.ProjectStatsDTO;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.service.ProjectService;
 import jakarta.validation.Valid;
@@ -60,5 +61,11 @@ public class ProjectController {
     public ResponseEntity<List<ProjectDTO>> getMyProjects(Authentication authentication) {
         List<ProjectDTO> projects = projectService.getProjectsForUser(authentication.getName());
         return ResponseEntity.ok(projects);
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<List<ProjectStatsDTO>> getProjectStats(Authentication authentication) {
+        List<ProjectStatsDTO> stats = projectService.getProjectStats(authentication.getName());
+        return ResponseEntity.ok(stats);
     }
 }

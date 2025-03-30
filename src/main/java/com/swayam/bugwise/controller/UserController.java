@@ -1,16 +1,17 @@
 package com.swayam.bugwise.controller;
 
+import com.swayam.bugwise.dto.UpdatePasswordRequestDTO;
+import com.swayam.bugwise.dto.UpdateUserRequestDTO;
 import com.swayam.bugwise.dto.UserDetailsDTO;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -47,5 +48,23 @@ public class UserController {
         String username = authentication.getName();
         Map<UserRole, Long> descendantCount = userService.getDescendantUserCount(username);
         return ResponseEntity.ok(descendantCount);
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<User> updateCurrentUser(
+            @Valid @RequestBody UpdateUserRequestDTO request,
+            Authentication authentication) {
+        String email = authentication.getName();
+        User updatedUser = userService.updateUserDetails(email, request);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @PutMapping("/{userId}/password")
+    @PreAuthorize("hasRole('ADMIN') or #userId == authentication.principal.id")
+    public ResponseEntity<Void> updatePassword(
+            @PathVariable String userId,
+            @Valid @RequestBody UpdatePasswordRequestDTO request) {
+        userService.updateUserPassword(userId, request);
+        return ResponseEntity.noContent().build();
     }
 }

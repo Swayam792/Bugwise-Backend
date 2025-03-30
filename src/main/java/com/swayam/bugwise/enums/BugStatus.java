@@ -2,7 +2,7 @@ package com.swayam.bugwise.enums;
 
 public enum BugStatus {
     NEW,
-    ASSIGNED,
+    OPEN,
     IN_PROGRESS,
     RESOLVED,
     CLOSED,

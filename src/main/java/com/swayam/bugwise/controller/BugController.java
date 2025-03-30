@@ -1,8 +1,6 @@
 package com.swayam.bugwise.controller;
 
-import com.swayam.bugwise.dto.BugDTO;
-import com.swayam.bugwise.dto.BugRequestDTO;
-import com.swayam.bugwise.dto.BugStatisticsDTO;
+import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.BugDocument;
 import com.swayam.bugwise.enums.BugSeverity;
@@ -14,9 +12,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PagedResourcesAssembler;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.PagedModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -33,15 +28,15 @@ public class BugController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TESTER', 'DEVELOPER')")
-    public ResponseEntity<Bug> createBug(@Valid @RequestBody BugRequestDTO request) {
-        Bug bug = bugService.createBug(request);
+    public ResponseEntity<Bug> createBug(@Valid @RequestBody BugRequestDTO request, Authentication authentication) {
+        Bug bug = bugService.createBug(request, authentication.getName());
         aiAnalysisService.analyzeBug(bug.getId());
         return ResponseEntity.ok(bug);
     }
 
     @PutMapping("/{bugId}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'PROJECT_MANAGER')")
-    public ResponseEntity<Bug> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request) {
+    public ResponseEntity<BugDTO> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request) {
         return ResponseEntity.ok(bugService.updateBug(bugId, request));
     }
 
@@ -50,31 +45,38 @@ public class BugController {
         return ResponseEntity.ok(bugService.getBug(bugId));
     }
 
-    @GetMapping("/search")
-    public ResponseEntity<List<BugDocument>> searchBugs(@RequestParam String query) {
-        return ResponseEntity.ok(bugService.searchBugs(query));
-    }
-
     @PostMapping("/{bugId}/assign")
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'ADMIN')")
-    public ResponseEntity<Bug> assignBug(@PathVariable String bugId, @RequestParam String developerId) {
+    public ResponseEntity<BugDTO> assignBug(@PathVariable String bugId, @RequestParam String developerId) {
         return ResponseEntity.ok(bugService.assignBug(bugId, developerId));
     }
 
     @PostMapping("/{bugId}/status")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'TESTER', 'PROJECT_MANAGER')")
-    public ResponseEntity<Bug> updateBugStatus(@PathVariable String bugId, @RequestParam BugStatus status) {
+    public ResponseEntity<BugDTO> updateBugStatus(@PathVariable String bugId, @RequestParam BugStatus status) {
         return ResponseEntity.ok(bugService.updateBugStatus(bugId, status));
     }
 
     @GetMapping("/project/{projectId}/search")
-    public ResponseEntity<Page<Bug>> searchBugsInProject(
+    public ResponseEntity<Page<BugDTO>> searchBugsInProject(
             @PathVariable String projectId,
-            @RequestParam String searchTerm,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(bugService.searchBugsInProject(projectId, searchTerm, pageable));
+        return ResponseEntity.ok(bugService.searchBugsInProject(projectId, searchTerm, status, pageable));
+    }
+
+    @GetMapping("/project/{projectId}/assigned")
+    public ResponseEntity<Page<BugDTO>> getAssignedBugsForDeveloperInProject(
+            Authentication authentication,
+            @PathVariable String projectId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(bugService.getAssignedBugsForDeveloperInProject(
+                authentication.getName(), projectId, pageable));
     }
 
     @GetMapping("/project/{projectId}/statistics")
@@ -83,20 +85,34 @@ public class BugController {
     }
 
     @GetMapping("/project/{projectId}/active")
-    public ResponseEntity<List<Bug>> getActiveBugs(
+    public ResponseEntity<Page<BugDTO>> getActiveBugs(
             @PathVariable String projectId,
-            @RequestParam BugSeverity severity) {
-        return ResponseEntity.ok(bugService.findActiveByProjectAndSeverity(projectId, severity));
+            @RequestParam BugSeverity severity,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<BugDTO> activeBugs = bugService.findActiveByProjectAndSeverity(projectId, severity, pageable);
+
+        return ResponseEntity.ok(activeBugs);
     }
 
     @GetMapping("/my-bugs/latest")
     public ResponseEntity<Page<BugDTO>> getMyBugs(
             Authentication authentication,
-            @RequestParam(value = "page", defaultValue = "0") Integer page,
-            @RequestParam(value = "size", defaultValue = "5") Integer size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(bugService.getBugsForUser(authentication.getName(), pageable));
+    }
 
-        Page<BugDTO> bugs = bugService.getBugsForUser(authentication.getName(), page, size);
-        return ResponseEntity.ok(bugs);
+    @GetMapping("/my-bugs/assigned")
+    public ResponseEntity<Page<BugDTO>> getMyAssignedBugs(
+            Authentication authentication,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "5") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(bugService.getAssignedBugsForDeveloper(authentication.getName(), pageable));
     }
 
     @GetMapping("/my-bugs/statistics")

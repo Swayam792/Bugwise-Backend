@@ -22,11 +22,11 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 public class Bug extends BaseEntity {
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "english")
     @NotBlank(message = "Title cannot be blank")
     private String title;
 
-    @Field(type = FieldType.Text)
+    @Field(type = FieldType.Text, analyzer = "english")
     @NotBlank(message = "Description cannot be blank")
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -47,9 +47,16 @@ public class Bug extends BaseEntity {
     @JsonBackReference
     private User assignedDeveloper;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reported_by_id", nullable = false)
+    @JsonBackReference
+    private User reportedBy;
+
     @OneToMany(mappedBy = "bug", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private Set<Comment> comments = new HashSet<>();
 
     @OneToMany(mappedBy = "bug", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private Set<ChatMessage> chatMessages = new HashSet<>();
 }

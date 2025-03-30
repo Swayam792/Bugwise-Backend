@@ -11,6 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -18,13 +19,18 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 public class BugDTO implements Serializable {
+    private String id;
     private String title;
     private String description;
     private BugStatus status;
     private BugSeverity severity;
-    private UserDTO assignedDeveloper;
-    private Set<CommentDTO> comments = new HashSet<>();
     private String projectName;
-    private String projectManagerName;
+    private UserDTO assignedDeveloper;
+    private UserDTO reportedBy;
+    private String organizationId;
     private String organizationName;
+    private String projectManagerId;
+    private String projectManagerName;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

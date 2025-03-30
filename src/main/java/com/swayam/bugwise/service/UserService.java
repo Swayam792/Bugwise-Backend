@@ -1,16 +1,20 @@
 package com.swayam.bugwise.service;
 
+import com.swayam.bugwise.dto.UpdatePasswordRequestDTO;
+import com.swayam.bugwise.dto.UpdateUserRequestDTO;
 import com.swayam.bugwise.dto.UserDetailsDTO;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.exception.UnauthorizedAccessException;
+import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.OrganizationRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +27,7 @@ import java.util.stream.Collectors;
 public class UserService {
     private final UserRepository userRepository;
     private final OrganizationRepository organizationRepository;
+    private final PasswordEncoder passwordEncoder;
 
     public List<User> findActiveUsersByOrganizationAndRole(String organizationId, UserRole role) {
         return userRepository.findActiveUsersByOrganizationAndRole(organizationId, role);
@@ -40,7 +45,7 @@ public class UserService {
 
     public UserDetailsDTO getCurrentUserDetails(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         String userId = user.getId();
         UserRole role = user.getRole();
@@ -89,5 +94,34 @@ public class UserService {
 
     public User getUserByEmail(String email){
         return userRepository.findByEmail(email).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
+    public User updateUserDetails(String email, UpdateUserRequestDTO request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.getEmail().equals(request.getEmail())) {
+            if (userRepository.existsByEmail(request.getEmail())) {
+                throw new ValidationException(Map.of("email", "Email is already taken"));
+            }
+            user.setEmail(request.getEmail());
+        }
+
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+
+        return userRepository.save(user);
+    }
+
+    public void updateUserPassword(String userId, UpdatePasswordRequestDTO request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new ValidationException(Map.of("currentPassword", "Current password is incorrect"));
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 }

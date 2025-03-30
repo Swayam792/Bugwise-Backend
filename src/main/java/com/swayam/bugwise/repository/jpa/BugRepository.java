@@ -7,6 +7,7 @@ import com.swayam.bugwise.enums.BugStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,17 +16,18 @@ import java.util.List;
 import java.util.Set;
 
 @Repository
-public interface BugRepository extends JpaRepository<Bug, String> {
+public interface BugRepository extends JpaRepository<Bug, String>, JpaSpecificationExecutor<Bug> {
 
     @Query(value = "SELECT b FROM Bug b WHERE " +
             "b.project.id = :projectId AND " +
             "b.severity = :severity AND " +
-            "b.status NOT IN (:closed, :resolved)")
-    List<Bug> findActiveByProjectAndSeverity(
+            "b.status NOT IN (:closed, :resolved)", nativeQuery = true)
+    Page<Bug> findActiveByProjectAndSeverity(
             @Param("projectId") String projectId,
             @Param("severity") BugSeverity severity,
             @Param("closed") BugStatus closed,
-            @Param("resolved") BugStatus resolved
+            @Param("resolved") BugStatus resolved,
+            Pageable pageable
     );
 
     @Query(value = "SELECT NEW com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) " +
@@ -49,17 +51,26 @@ public interface BugRepository extends JpaRepository<Bug, String> {
     @Query(value = "SELECT new com.swayam.bugwise.dto.BugStatisticsDTO(b.status, COUNT(b)) FROM Bug b WHERE b.project.id IN :projectIds GROUP BY b.status")
     List<BugStatisticsDTO> findBugStatisticsByProjectIdIn(@Param("projectIds") Set<String> projectIds);
 
-    @Query("SELECT b FROM Bug b " +
+    @Query(value = "SELECT DISTINCT b FROM Bug b " +
             "JOIN FETCH b.project p " +
             "JOIN FETCH p.organization o " +
             "LEFT JOIN FETCH p.projectManager pm " +
             "WHERE p.organization.id IN :organizationIds")
     Page<Bug> findByProjectOrganizationIdIn(@Param("organizationIds") Set<String> organizationIds, Pageable pageable);
 
-    @Query("SELECT b FROM Bug b " +
+    @Query(value = "SELECT DISTINCT b FROM Bug b " +
             "JOIN FETCH b.project p " +
             "JOIN FETCH p.organization o " +
             "LEFT JOIN FETCH p.projectManager pm " +
             "WHERE p.id IN :projectIds")
     Page<Bug> findByProjectIdIn(@Param("projectIds") Set<String> projectIds, Pageable pageable);
+
+    Page<Bug> findByIdIn(List<String> ids, Pageable pageable);
+
+    @Query(value = "SELECT b FROM Bug b WHERE b.project.id = :projectId AND b.assignedDeveloper.id = :developerId", nativeQuery = true)
+    Page<Bug> findByProjectIdAndAssignedDeveloperId(
+            @Param("projectId") String projectId,
+            @Param("developerId") String developerId,
+            Pageable pageable
+    );
 }
