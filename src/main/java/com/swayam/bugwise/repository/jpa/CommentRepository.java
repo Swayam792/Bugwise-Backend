@@ -15,8 +15,8 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     List<Comment> findByBugId(String bugId);
     List<Comment> findByUserId(String userId);
 
-    @Query(value = "SELECT c FROM Comment c WHERE c.bug.id = :bugId " +
-            "ORDER BY c.createdAt DESC", nativeQuery = true)
+    @Query(value = "SELECT * FROM comments c WHERE c.bug_id = :bugId ORDER BY c.created_at DESC",
+            nativeQuery = true)
     Page<Comment> findBugCommentsWithPagination(
             @Param("bugId") String bugId,
             Pageable pageable

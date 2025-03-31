@@ -4,6 +4,7 @@ import com.swayam.bugwise.dto.ExceptionResponseDTO;
 import com.swayam.bugwise.dto.ValidationErrorResponseDTO;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -47,6 +48,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedAccessException.class)
     public ResponseEntity<ExceptionResponseDTO> handleUnauthorizedAccessException(UnauthorizedAccessException ex) {
         ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exceptionResponseDTO);
+    }
+
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ExceptionResponseDTO> handleAuthorizationDeniedException(AuthorizationDeniedException ex) {
+        ExceptionResponseDTO exceptionResponseDTO = new ExceptionResponseDTO("You are not authorized to perform this action.");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(exceptionResponseDTO);
     }
 

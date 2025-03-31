@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectDTO {
+    private String id;
     private String name;
     private String description;
     private UserDTO projectManager;

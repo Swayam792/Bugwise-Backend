@@ -94,6 +94,7 @@ public class ProjectService {
         if (user.getRole() == UserRole.ADMIN) {
             return projectRepository.findAll().stream()
                     .map(project -> new ProjectDTO(
+                            project.getId(),
                             project.getName(),
                             project.getDescription(),
                             DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class)
@@ -105,6 +106,7 @@ public class ProjectService {
 
             return projectRepository.findByOrganizationIdIn(organizationIds).stream()
                     .map(project -> new ProjectDTO(
+                            project.getId(),
                             project.getName(),
                             project.getDescription(),
                             DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class)
