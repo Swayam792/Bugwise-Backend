@@ -67,4 +67,10 @@ public class UserController {
         userService.updateUserPassword(userId, request);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/developers")
+    public ResponseEntity<List<User>> getDevelopers(@RequestParam(value = "projectId", required = false) String projectId,
+                                                    @RequestParam(value = "organizationId", required = false) String organizationId) {
+        return ResponseEntity.ok(userService.findDevelopers(projectId, organizationId));
+    }
 }

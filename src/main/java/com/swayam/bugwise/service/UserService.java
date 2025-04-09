@@ -34,7 +34,7 @@ public class UserService {
     }
 
     public long countActiveUsersByOrganizationAndRole(String organizationId, UserRole role) {
-        return userRepository.countActiveUsersByOrganizationsAndRole(organizationId, role.name());
+        return userRepository.countActiveUsersByOrganizationsAndRole(organizationId, role);
     }
 
     public User getCurrentUser() {
@@ -69,13 +69,13 @@ public class UserService {
             for (Organization organization : administeredOrganizations) {
                 descendantCount.put(UserRole.PROJECT_MANAGER,
                         descendantCount.getOrDefault(UserRole.PROJECT_MANAGER, 0L) +
-                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.PROJECT_MANAGER.name()));
+                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.PROJECT_MANAGER));
                 descendantCount.put(UserRole.DEVELOPER,
                         descendantCount.getOrDefault(UserRole.DEVELOPER, 0L) +
-                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.DEVELOPER.name()));
+                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.DEVELOPER));
                 descendantCount.put(UserRole.TESTER,
                         descendantCount.getOrDefault(UserRole.TESTER, 0L) +
-                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.TESTER.name()));
+                                userRepository.countActiveUsersByOrganizationsAndRole(organization.getId(), UserRole.TESTER));
             }
         } else if (currentUser.getRole() == UserRole.PROJECT_MANAGER) {
             Set<Project> managedProjects = currentUser.getManagedProjects();
@@ -123,5 +123,15 @@ public class UserService {
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+    }
+
+    public List<User> findDevelopers(String projectId, String organizationId){
+        List<User> userList = new ArrayList<>();
+        if(projectId != null){
+            userList = userRepository.findByManagedProjectsIdAndRole(projectId, UserRole.DEVELOPER);
+        }else if(organizationId != null){
+            userList = userRepository.findByOrganizationsIdAndRole(organizationId, UserRole.DEVELOPER);
+        }
+        return userList;
     }
 }

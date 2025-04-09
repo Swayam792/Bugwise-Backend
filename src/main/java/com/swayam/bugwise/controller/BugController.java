@@ -3,10 +3,12 @@ package com.swayam.bugwise.controller;
 import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.BugDocument;
+import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.service.AIAnalysisService;
 import com.swayam.bugwise.service.BugService;
+import com.swayam.bugwise.utils.DTOConverter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/bugs")
@@ -27,10 +30,9 @@ public class BugController {
     private final AIAnalysisService aiAnalysisService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TESTER', 'DEVELOPER')")
+    @PreAuthorize("hasAnyRole('TESTER', 'DEVELOPER', 'PROJECT_MANAGER')")
     public ResponseEntity<Bug> createBug(@Valid @RequestBody BugRequestDTO request, Authentication authentication) {
         Bug bug = bugService.createBug(request, authentication.getName());
-        aiAnalysisService.analyzeBug(bug.getId());
         return ResponseEntity.ok(bug);
     }
 
@@ -43,12 +45,6 @@ public class BugController {
     @GetMapping("/{bugId}")
     public ResponseEntity<BugDTO> getBug(@PathVariable String bugId) {
         return ResponseEntity.ok(bugService.getBug(bugId));
-    }
-
-    @PostMapping("/{bugId}/assign")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER', 'ADMIN')")
-    public ResponseEntity<BugDTO> assignBug(@PathVariable String bugId, @RequestParam String developerId) {
-        return ResponseEntity.ok(bugService.assignBug(bugId, developerId));
     }
 
     @PostMapping("/{bugId}/status")
@@ -118,5 +114,10 @@ public class BugController {
     @GetMapping("/my-bugs/statistics")
     public ResponseEntity<List<BugStatisticsDTO>> getMyBugStatistics(Authentication authentication) {
         return ResponseEntity.ok(bugService.getBugStatisticsForUser(authentication.getName()));
+    }
+
+    @GetMapping("/{bugId}/suggestions")
+    public ResponseEntity<BugSuggestionDTO> getBugSuggestions(@PathVariable String bugId) {
+        return ResponseEntity.ok(aiAnalysisService.getBugSuggestions(bugId));
     }
 }

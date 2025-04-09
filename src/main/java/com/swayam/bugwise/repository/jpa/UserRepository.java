@@ -16,8 +16,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
-    @Query(value = "SELECT u FROM User u WHERE u.organizations.id = :orgId AND u.role = :role AND " +
-            "u.isActive = true", nativeQuery = true)
+    @Query("SELECT u FROM User u JOIN u.organizations o WHERE " +
+            "o.id = :orgId AND u.role = :role AND u.isActive = true")
     List<User> findActiveUsersByOrganizationAndRole(
             @Param("orgId") String organizationId,
             @Param("role") UserRole role
@@ -26,14 +26,11 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query(value = "SELECT id FROM users WHERE email = :email", nativeQuery = true)
     String getIdByEmail(@Param("email") String email);
 
-    @Query(value = "SELECT COUNT(u.id) FROM users u " +
-            "JOIN organization_user ou ON u.id = ou.user_id " +
-            "JOIN organizations o ON ou.organization_id = o.id " +
-            "WHERE o.id = :organizationId AND u.role = :role AND u.is_active = true",
-            nativeQuery = true)
+    @Query("SELECT COUNT(u) FROM User u JOIN u.organizations o WHERE " +
+            "o.id = :organizationId AND u.role = :role AND u.isActive = true")
     long countActiveUsersByOrganizationsAndRole(
             @Param("organizationId") String organizationId,
-            @Param("role") String role
+            @Param("role") UserRole role
     );
 
     @Query(value = "SELECT COUNT(u) FROM User u JOIN u.assignedBugs b " +
@@ -42,4 +39,9 @@ public interface UserRepository extends JpaRepository<User, String> {
             @Param("projectIds") Set<String> projectIds,
             @Param("role") UserRole role
     );
+
+    List<User> findByManagedProjectsIdAndRole(String projectId, UserRole role);
+    List<User> findByOrganizationsIdAndRole(String organizationId, UserRole role);
+    Set<User> findAllByIdIn(Set<String> ids);
+    List<User> findByAssignedProjectsIdAndRole(String projectId, UserRole role);
 }

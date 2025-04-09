@@ -2,6 +2,7 @@ package com.swayam.bugwise.entity;
 
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
+import com.swayam.bugwise.enums.BugType;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -13,8 +14,9 @@ import org.springframework.data.elasticsearch.annotations.DateFormat;
 import org.springframework.data.elasticsearch.annotations.ValueConverter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
-@Document(indexName = "bugs")
+@Document(indexName = "bugs", createIndex = true)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -57,6 +59,15 @@ public class BugDocument {
 
     @Field(type = FieldType.Object)
     private OrganizationRef organization;
+
+    @Field(type = FieldType.Keyword)
+    private BugType bugType;
+
+    @Field(type = FieldType.Integer)
+    private Integer expectedTimeHours;
+
+    @Field(type = FieldType.Integer)
+    private Integer actualTimeHours;
 
     @Getter
     @Setter

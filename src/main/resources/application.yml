@@ -1,14 +1,16 @@
 spring:
   application:
     name: bugwise
+  config:
+    import: optional:file:.env[.properties]
   mvc:
     throw-exception-if-no-handler-found: true
   resources:
     add-mappings: false
   datasource:
-    url: jdbc:postgresql://bugwise-bugwise.c.aivencloud.com:17987/defaultdb
-    username: avnadmin
-    password: AVNS_fQ2vFoJFXmRL4UvZUpY
+    url: ${DB_URL}
+    username: ${DB_USER_NAME}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -33,6 +35,14 @@ spring:
       cluster-nodes: https://localhost:9200
       repositories:
         enabled: true
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: llama3-70b-8192
+          temperature: 0.7
   kafka:
     consumer:
       auto-offset-reset: earliest
@@ -48,5 +58,5 @@ spring:
 
 security:
   jwt:
-    secret-key: 3ddihwjb23i3ihnsijw093nbdjkojoskh3dsbiuejbdis337t26r3v474g2qbyh298
+    secret-key: ${JWT_SECRET_KEY}
     expiration-time: 86400000

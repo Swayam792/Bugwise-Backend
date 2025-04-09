@@ -1,8 +1,6 @@
 package com.swayam.bugwise.controller;
 
-import com.swayam.bugwise.dto.ProjectDTO;
-import com.swayam.bugwise.dto.ProjectRequestDTO;
-import com.swayam.bugwise.dto.ProjectStatsDTO;
+import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.service.ProjectService;
 import jakarta.validation.Valid;
@@ -15,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/v1/projects")
@@ -31,6 +30,22 @@ public class ProjectController {
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectDTO> getProject(@PathVariable String projectId) {
         return ResponseEntity.ok(projectService.getProject(projectId));
+    }
+
+    @PostMapping("/{projectId}/assign-users")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
+    public ResponseEntity<ProjectDTO> assignUsersToProject(
+            @PathVariable String projectId,
+            @RequestBody Set<String> userIds) {
+        return ResponseEntity.ok(projectService.assignUsersToProject(projectId, userIds));
+    }
+
+    @PostMapping("/{projectId}/remove-users")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
+    public ResponseEntity<ProjectDTO> removeUsersFromProject(
+            @PathVariable String projectId,
+            @RequestBody Set<String> userIds) {
+        return ResponseEntity.ok(projectService.removeUsersFromProject(projectId, userIds));
     }
 
     @GetMapping("/organization/{organizationId}")

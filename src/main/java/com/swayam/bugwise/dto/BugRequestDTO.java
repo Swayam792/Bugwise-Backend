@@ -1,9 +1,13 @@
 package com.swayam.bugwise.dto;
 
 import com.swayam.bugwise.enums.BugSeverity;
+import com.swayam.bugwise.enums.BugType;
+import com.swayam.bugwise.enums.DeveloperType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.util.Set;
 
 @Data
 public class BugRequestDTO {
@@ -18,4 +22,8 @@ public class BugRequestDTO {
 
     @NotNull(message = "Project ID is required")
     private String projectId;
+
+    private BugType bugType;
+    private Integer expectedTimeHours;
+    private Set<DeveloperType> requiredDeveloperTypes;
 }

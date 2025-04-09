@@ -30,6 +30,9 @@ public interface ProjectRepository extends JpaRepository<Project, String> {
 
     List<Project> findByOrganizationIdIn(Set<String> organizationIds);
 
-    @Query("SELECT DISTINCT p FROM Project p JOIN p.bugs b WHERE b.assignedDeveloper.id = :developerId")
+    @Query("SELECT DISTINCT p FROM Project p " +
+            "JOIN p.bugs b " +
+            "JOIN b.assignedDeveloper ad " +
+            "WHERE ad.id = :developerId")
     List<Project> findByAssignedBugsDeveloperId(@Param("developerId") String developerId);
 }

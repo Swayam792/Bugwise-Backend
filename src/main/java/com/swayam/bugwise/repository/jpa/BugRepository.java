@@ -18,15 +18,14 @@ import java.util.Set;
 @Repository
 public interface BugRepository extends JpaRepository<Bug, String>, JpaSpecificationExecutor<Bug> {
 
-    @Query(value = "SELECT b FROM Bug b WHERE " +
+    @Query("SELECT b FROM Bug b WHERE " +
             "b.project.id = :projectId AND " +
             "b.severity = :severity AND " +
-            "b.status NOT IN (:closed, :resolved)", nativeQuery = true)
+            "b.status NOT IN (:excludedStatuses)")
     Page<Bug> findActiveByProjectAndSeverity(
             @Param("projectId") String projectId,
             @Param("severity") BugSeverity severity,
-            @Param("closed") BugStatus closed,
-            @Param("resolved") BugStatus resolved,
+            @Param("excludedStatuses") Set<BugStatus> excludedStatuses,
             Pageable pageable
     );
 
@@ -35,10 +34,10 @@ public interface BugRepository extends JpaRepository<Bug, String>, JpaSpecificat
             "GROUP BY b.status")
     List<BugStatisticsDTO> getBugStatisticsByProject(@Param("projectId") String projectId);
 
-    @Query(value = "SELECT b FROM Bug b WHERE " +
+    @Query("SELECT b FROM Bug b WHERE " +
             "b.project.id = :projectId AND " +
             "(LOWER(b.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
-            "LOWER(b.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))", nativeQuery = true)
+            "LOWER(b.description) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
     Page<Bug> searchBugsInProject(
             @Param("projectId") String projectId,
             @Param("searchTerm") String searchTerm,
@@ -67,7 +66,7 @@ public interface BugRepository extends JpaRepository<Bug, String>, JpaSpecificat
 
     Page<Bug> findByIdIn(List<String> ids, Pageable pageable);
 
-    @Query(value = "SELECT b FROM Bug b WHERE b.project.id = :projectId AND b.assignedDeveloper.id = :developerId", nativeQuery = true)
+    @Query("SELECT b FROM Bug b JOIN b.assignedDeveloper ad WHERE b.project.id = :projectId AND ad.id = :developerId")
     Page<Bug> findByProjectIdAndAssignedDeveloperId(
             @Param("projectId") String projectId,
             @Param("developerId") String developerId,

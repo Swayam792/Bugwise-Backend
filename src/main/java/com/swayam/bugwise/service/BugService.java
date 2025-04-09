@@ -6,6 +6,7 @@ import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.*;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
+import com.swayam.bugwise.enums.DeveloperType;
 import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.elasticsearch.BugDocumentRepository;
@@ -51,7 +52,6 @@ public class BugService {
     public Bug createBug(BugRequestDTO request, String email) {
         User currentUser = userRepository.findByEmail(email).orElseThrow(() ->
                 new NoSuchElementException("User not found"));
-        validateUserCanCreateBug(currentUser);
 
         Bug bug = new Bug();
         bug.setTitle(request.getTitle());
@@ -80,6 +80,18 @@ public class BugService {
         bug.setDescription(request.getDescription());
         bug.setSeverity(request.getSeverity());
 
+        if (request.getBugType() != null) {
+            bug.setBugType(request.getBugType());
+        }
+
+        if (request.getExpectedTimeHours() != null) {
+            bug.setExpectedTimeHours(request.getExpectedTimeHours());
+        }
+
+        if (request.getRequiredDeveloperTypes() != null && !request.getRequiredDeveloperTypes().isEmpty()) {
+            bug.setRequiredDeveloperTypes(request.getRequiredDeveloperTypes());
+        }
+
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
         return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
@@ -103,10 +115,13 @@ public class BugService {
         bugDocument.setProjectName(bug.getProject().getName());
         bugDocument.setCreatedAt(bug.getCreatedAt());
         bugDocument.setUpdatedAt(bug.getUpdatedAt());
+        bugDocument.setBugType(bug.getBugType());
+        bugDocument.setExpectedTimeHours(bug.getExpectedTimeHours());
+        bugDocument.setActualTimeHours(bug.getActualTimeHours());
 
         if (bug.getAssignedDeveloper() != null) {
-            bugDocument.setAssignedDeveloperId(bug.getAssignedDeveloper().getId());
-            bugDocument.setAssignedDeveloperEmail(bug.getAssignedDeveloper().getEmail());
+            bugDocument.setAssignedDeveloperId(bug.getAssignedDeveloper().stream().map(e -> e.getId()).collect(Collectors.joining(",")));
+            bugDocument.setAssignedDeveloperEmail(bug.getAssignedDeveloper().stream().map(e -> e.getEmail()).collect(Collectors.joining(",")));
         }
 
         if (bug.getReportedBy() != null) {
@@ -124,15 +139,21 @@ public class BugService {
     }
 
     @CacheEvict(value = "bugs", key = "#bugId")
-    public BugDTO assignBug(String bugId, String developerId) {
+    public BugDTO assignBugToDevelopers(String bugId, List<String> developerIds) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
-        User developer = userRepository.findById(developerId)
-                .orElseThrow(() -> new NoSuchElementException("Developer not found"));
 
-        validateDeveloperAssignment(developer);
+        List<User> developers = userRepository.findAllById(developerIds);
 
-        bug.setAssignedDeveloper(developer);
+        Set<DeveloperType> requiredTypes = bug.getRequiredDeveloperTypes();
+        developers.forEach(dev -> {
+            if (!requiredTypes.contains(dev.getDeveloperType())) {
+                throw new ValidationException(Map.of("error",
+                        "Developer " + dev.getEmail() + " doesn't have required skills for this bug"));
+            }
+        });
+
+        bug.setAssignedDeveloper((Set<User>) developers);
         bug.setStatus(BugStatus.OPEN);
 
         Bug updatedBug = bugRepository.save(bug);
@@ -167,7 +188,7 @@ public class BugService {
     private void validateUserCanUpdateBug(Bug bug) {
         User currentUser = getCurrentUser();
         boolean isAssignedDeveloper = bug.getAssignedDeveloper() != null &&
-                bug.getAssignedDeveloper().getId().equals(currentUser.getId());
+                bug.getAssignedDeveloper().contains(currentUser.getId());
         boolean isProjectManager = currentUser.getRole() == UserRole.PROJECT_MANAGER &&
                 bug.getProject().getProjectManager().getId().equals(currentUser.getId());
 
@@ -193,7 +214,8 @@ public class BugService {
     }
 
     public Page<BugDTO> findActiveByProjectAndSeverity(String projectId, BugSeverity severity, Pageable pageable) {
-        Page<Bug> bugs = bugRepository.findActiveByProjectAndSeverity(projectId, severity, BugStatus.CLOSED, BugStatus.RESOLVED, pageable);
+        Set<BugStatus> excludedStatuses = Set.of(BugStatus.CLOSED, BugStatus.RESOLVED);
+        Page<Bug> bugs = bugRepository.findActiveByProjectAndSeverity(projectId, severity, excludedStatuses, pageable);
         return bugs.map(bug -> DTOConverter.convertToDTO(bug, BugDTO.class));
     }
 
@@ -217,10 +239,14 @@ public class BugService {
                         }
                         return dto;
                     });
-        } else if (user.getRole() == UserRole.PROJECT_MANAGER || user.getRole() == UserRole.DEVELOPER || user.getRole() == UserRole.TESTER) {
-            Set<String> projectIds = user.getManagedProjects().stream()
+        } else {
+            Set<String> projectIds = user.getAssignedProjects().stream()
                     .map(Project::getId)
                     .collect(Collectors.toSet());
+
+            projectIds.addAll(user.getManagedProjects().stream()
+                    .map(Project::getId)
+                    .collect(Collectors.toSet()));
 
             return bugRepository.findByProjectIdIn(projectIds, pageable)
                     .map(bug -> {
@@ -232,8 +258,6 @@ public class BugService {
                         }
                         return dto;
                     });
-        } else {
-            throw new RuntimeException("Invalid role");
         }
     }
 
@@ -254,7 +278,18 @@ public class BugService {
     }
 
     public Page<BugDTO> searchBugsInProject(String projectId, String searchTerm, String status, Pageable pageable) {
-        List<String> bugIds = searchBugDocumentsInProject(projectId, searchTerm);
+        List<String> bugIds;
+
+        if (searchTerm != null && !searchTerm.isEmpty()) {
+            bugIds = searchBugDocumentsInProject(projectId, searchTerm);
+            log.info("Bug IDs from search: {}", bugIds);
+
+            if (bugIds.isEmpty()) {
+                return Page.empty(pageable);
+            }
+        } else {
+            bugIds = Collections.emptyList();
+        }
 
         Specification<Bug> spec = Specification.where((root, query, cb) ->
                 cb.equal(root.get("project").get("id"), projectId));
@@ -281,23 +316,20 @@ public class BugService {
         NativeQuery query = NativeQuery.builder()
                 .withQuery(q -> q
                         .bool(b -> b
-                                .must(m -> m
-                                        .term(t -> t
-                                                .field("projectId")
-                                                .value(projectId)
-                                        )
-                                )
-                                .must(m -> q
-                                        .multiMatch(mm -> mm
-                                                .fields("title", "description")
-                                                .query(searchTerm)
-                                        )
-                                )
+                                .must(m -> m.term(t -> t
+                                        .field("projectId")
+                                        .value(projectId)
+                                ))
+                                .must(m -> m.multiMatch(mm -> mm
+                                        .fields("title", "description")
+                                        .query(searchTerm)
+                                ))
                         )
                 )
                 .build();
 
         SearchHits<BugDocument> hits = elasticsearchOperations.search(query, BugDocument.class);
+
         return hits.stream()
                 .map(SearchHit::getId)
                 .collect(Collectors.toList());
@@ -330,7 +362,7 @@ public class BugService {
         User developer = userRepository.findByEmail(email)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
-        boolean isAssignedToProject = developer.getManagedProjects().stream()
+        boolean isAssignedToProject = developer.getAssignedProjects().stream()
                 .anyMatch(p -> p.getId().equals(projectId));
 
         if (!isAssignedToProject) {

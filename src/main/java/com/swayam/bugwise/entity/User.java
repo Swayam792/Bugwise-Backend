@@ -2,6 +2,7 @@ package com.swayam.bugwise.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.swayam.bugwise.enums.DeveloperType;
 import com.swayam.bugwise.enums.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -49,12 +50,19 @@ public class User implements UserDetails {
     @JsonManagedReference
     private Set<Project> managedProjects = new HashSet<>();
 
-    @OneToMany(mappedBy = "assignedDeveloper")
-    @JsonManagedReference
+    @ManyToMany(mappedBy = "assignedUsers")
+    @JsonBackReference
+    private Set<Project> assignedProjects = new HashSet<>();
+
+    @ManyToMany(mappedBy = "assignedDeveloper")
+    @JsonBackReference
     private Set<Bug> assignedBugs = new HashSet<>();
 
     @ManyToMany(mappedBy = "users")
     private Set<Organization> organizations = new HashSet<>();
+
+    @Enumerated(EnumType.STRING)
+    private DeveloperType developerType;
 
     private boolean isActive = true;
 
