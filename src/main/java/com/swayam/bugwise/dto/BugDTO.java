@@ -24,7 +24,7 @@ public class BugDTO implements Serializable {
     private String description;
     private BugStatus status;
     private BugSeverity severity;
-    private String projectName;
+    private ProjectDTO project;
     private UserDTO assignedDeveloper;
     private UserDTO reportedBy;
     private String organizationId;

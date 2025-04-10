@@ -101,7 +101,13 @@ public class BugService {
     public BugDTO getBug(String bugId) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found with id: " + bugId));
-        return DTOConverter.convertToDTO(bug, BugDTO.class);
+        BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
+        dto.setProject(DTOConverter.convertToDTO(bug.getProject(), ProjectDTO.class));
+        dto.setOrganizationName(bug.getProject().getOrganization().getName());
+        if (bug.getProject().getProjectManager() != null) {
+            dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
+        }
+        return dto;
     }
 
     private void indexBugInElasticsearch(Bug bug) {
@@ -232,7 +238,7 @@ public class BugService {
             return bugRepository.findByProjectOrganizationIdIn(organizationIds, pageable)
                     .map(bug -> {
                         BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-                        dto.setProjectName(bug.getProject().getName());
+                        dto.setProject(DTOConverter.convertToDTO(bug.getProject(), ProjectDTO.class));
                         dto.setOrganizationName(bug.getProject().getOrganization().getName());
                         if (bug.getProject().getProjectManager() != null) {
                             dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
@@ -251,7 +257,7 @@ public class BugService {
             return bugRepository.findByProjectIdIn(projectIds, pageable)
                     .map(bug -> {
                         BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-                        dto.setProjectName(bug.getProject().getName());
+                        dto.setProject(DTOConverter.convertToDTO(bug.getProject(), ProjectDTO.class));
                         dto.setOrganizationName(bug.getProject().getOrganization().getName());
                         if (bug.getProject().getProjectManager() != null) {
                             dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
@@ -373,7 +379,7 @@ public class BugService {
 
         return bugs.map(bug -> {
             BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-            dto.setProjectName(bug.getProject().getName());
+            dto.setProject(DTOConverter.convertToDTO(bug.getProject(), ProjectDTO.class));
             dto.setOrganizationName(bug.getProject().getOrganization().getName());
             if (bug.getProject().getProjectManager() != null) {
                 dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
