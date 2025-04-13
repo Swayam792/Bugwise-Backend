@@ -33,6 +33,7 @@ public class Organization extends BaseEntity {
             joinColumns = @JoinColumn(name = "organization_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @JsonManagedReference
     private Set<User> users = new HashSet<>();
 
     @OneToOne

@@ -47,5 +47,6 @@ public class Project extends BaseEntity {
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    private Set<User> assignedUsers = new HashSet<>();
+    @JsonManagedReference
+    private Set<User> assignedUsers;
 }

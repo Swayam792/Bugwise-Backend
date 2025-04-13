@@ -10,9 +10,11 @@ import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.OrganizationRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import com.swayam.bugwise.utils.DTOConverter;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -26,7 +28,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
-@Slf4j
 public class OrganizationService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
@@ -35,9 +36,6 @@ public class OrganizationService {
         if (organizationRepository.existsByName(request.getName())) {
             throw new ValidationException(Map.of("name", "Organization name already exists"));
         }
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        log.info("username: {}", username);
 
         Organization organization = new Organization();
         organization.setName(request.getName());
@@ -71,5 +69,33 @@ public class OrganizationService {
                     .map(org -> new OrganizationDTO(org.getId(), org.getName()))
                     .collect(Collectors.toList());
         }
+    }
+
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    public Organization createOrganization(OrganizationDTO organizationDTO) {
+        if (organizationRepository.existsByName(organizationDTO.getName())) {
+            throw new ValidationException(Map.of("name", "Organization name already exists"));
+        }
+
+        Organization organization = new Organization();
+        organization.setName(organizationDTO.getName());
+        organization.setDescription(organizationDTO.getDescription());
+
+        return organizationRepository.save(organization);
+    }
+
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    public Organization updateOrganization(String id, OrganizationDTO organizationDTO) {
+        if (organizationRepository.existsByName(organizationDTO.getName())) {
+            throw new ValidationException(Map.of("name", "Organization name already exists"));
+        }
+
+        Organization organization = new Organization();
+        organization.setName(organizationDTO.getName());
+        organization.setDescription(organizationDTO.getDescription());
+
+        return organizationRepository.save(organization);
     }
 }

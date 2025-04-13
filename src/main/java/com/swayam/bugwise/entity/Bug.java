@@ -76,9 +76,9 @@ public class Bug extends BaseEntity {
     @Column(name = "actual_time_hours")
     private Integer actualTimeHours;
 
-    @ElementCollection
-    @CollectionTable(name = "bug_required_developer_types", joinColumns = @JoinColumn(name = "bug_id"))
-    @Column(name = "developer_type")
-    @Enumerated(EnumType.STRING)
-    private Set<DeveloperType> requiredDeveloperTypes = new HashSet<>();
+//    @ElementCollection
+//    @CollectionTable(name = "bug_required_developer_types", joinColumns = @JoinColumn(name = "bug_id"))
+//    @Column(name = "developer_type")
+//    @Enumerated(EnumType.STRING)
+//    private Set<DeveloperType> requiredDeveloperTypes = new HashSet<>();
 }

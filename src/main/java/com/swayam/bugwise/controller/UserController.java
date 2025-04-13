@@ -2,6 +2,7 @@ package com.swayam.bugwise.controller;
 
 import com.swayam.bugwise.dto.UpdatePasswordRequestDTO;
 import com.swayam.bugwise.dto.UpdateUserRequestDTO;
+import com.swayam.bugwise.dto.UserDTO;
 import com.swayam.bugwise.dto.UserDetailsDTO;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.UserRole;
@@ -23,10 +24,10 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/active")
-    public ResponseEntity<List<User>> getActiveUsersByOrganizationAndRole(
+    public ResponseEntity<List<UserDetailsDTO>> getActiveUsersByOrganizationAndRole(
             @RequestParam String organizationId,
             @RequestParam UserRole role) {
-        List<User> users = userService.findActiveUsersByOrganizationAndRole(organizationId, role);
+        List<UserDetailsDTO> users = userService.findActiveUsersByOrganizationAndRole(organizationId, role);
         return ResponseEntity.ok(users);
     }
 
@@ -51,11 +52,11 @@ public class UserController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<User> updateCurrentUser(
+    public ResponseEntity<UserDetailsDTO> updateCurrentUser(
             @Valid @RequestBody UpdateUserRequestDTO request,
             Authentication authentication) {
         String email = authentication.getName();
-        User updatedUser = userService.updateUserDetails(email, request);
+        UserDetailsDTO updatedUser = userService.updateUserDetails(email, request);
         return ResponseEntity.ok(updatedUser);
     }
 
@@ -69,7 +70,7 @@ public class UserController {
     }
 
     @GetMapping("/developers")
-    public ResponseEntity<List<User>> getDevelopers(@RequestParam(value = "projectId", required = false) String projectId,
+    public ResponseEntity<List<UserDetailsDTO>> getDevelopers(@RequestParam(value = "projectId", required = false) String projectId,
                                                     @RequestParam(value = "organizationId", required = false) String organizationId) {
         return ResponseEntity.ok(userService.findDevelopers(projectId, organizationId));
     }

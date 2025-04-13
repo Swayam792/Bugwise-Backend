@@ -89,7 +89,6 @@ public class AIAnalysisService {
         - Type: {bugType}
         - Title: {title}
         - Description: {description}
-        - Required developer types: {requiredTypes}
         
         Available developers and their specializations:
         {developersList}
@@ -161,7 +160,6 @@ public class AIAnalysisService {
         ));
 
         String response = chatClient.prompt(prompt).call().content();
-        log.info("bug type: {}", response);
         try {
             return BugType.valueOf(response.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
@@ -177,7 +175,6 @@ public class AIAnalysisService {
         ));
 
         String response = chatClient.prompt(prompt).call().content();
-        log.info("response: {}", response);
         return Arrays.stream(response.split(","))
                 .map(String::trim)
                 .map(s -> {
@@ -203,7 +200,6 @@ public class AIAnalysisService {
         ));
 
         String response = chatClient.prompt(prompt).call().content();
-        log.info("response: {}", response);
         try {
             return Integer.parseInt(response.trim());
         } catch (NumberFormatException e) {
@@ -219,10 +215,9 @@ public class AIAnalysisService {
                         d.getId(),
                         d.getDeveloperType(),
                         d.getEmail(),
-                        d.getAssignedBugs().size())) // Added workload information
+                        d.getAssignedBugs().size()))
                 .collect(Collectors.joining("\n"));
 
-        log.info("developersList: {}", developersList);
 
         String pastBugsInfo = similarBugs.stream()
                 .filter(b -> b.getAssignedDeveloperId() != null)
@@ -252,17 +247,11 @@ public class AIAnalysisService {
                 "bugType", bug.getBugType() != null ? bug.getBugType().name() : "UNKNOWN",
                 "title", bug.getTitle() != null ? bug.getTitle() : "",
                 "description", bug.getDescription() != null ? bug.getDescription() : "",
-                "requiredTypes", bug.getRequiredDeveloperTypes() != null ?
-                        bug.getRequiredDeveloperTypes().stream()
-                                .filter(Objects::nonNull)
-                                .map(Enum::name)
-                                .collect(Collectors.joining(",")) : "",
                 "developersList", developersList != null ? developersList : "",
                 "pastBugsInfo", pastBugsInfo != null ? pastBugsInfo : "No information available"
         ));
 
         String response = chatClient.prompt(prompt).call().content();
-        log.info("response: {}", response);
         return Arrays.stream(response.split(","))
                 .map(String::trim)
                 .collect(Collectors.toList());

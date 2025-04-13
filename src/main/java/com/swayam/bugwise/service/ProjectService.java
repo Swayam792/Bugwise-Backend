@@ -1,9 +1,6 @@
 package com.swayam.bugwise.service;
 
-import com.swayam.bugwise.dto.ProjectDTO;
-import com.swayam.bugwise.dto.ProjectRequestDTO;
-import com.swayam.bugwise.dto.ProjectStatsDTO;
-import com.swayam.bugwise.dto.UserDTO;
+import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.Project;
@@ -16,13 +13,16 @@ import com.swayam.bugwise.repository.jpa.OrganizationRepository;
 import com.swayam.bugwise.repository.jpa.ProjectRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import com.swayam.bugwise.utils.DTOConverter;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -37,6 +37,8 @@ public class ProjectService {
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
 
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     public Project createProject(ProjectRequestDTO request) {
         Organization organization = organizationRepository.findById(request.getOrganizationId())
                 .orElseThrow(() -> new NoSuchElementException("Organization not found"));
@@ -61,17 +63,21 @@ public class ProjectService {
         return projectRepository.save(project);
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     @Cacheable(value = "projects", key = "#projectId")
     public ProjectDTO getProject(String projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NoSuchElementException("Project not found"));
         ProjectDTO dto = DTOConverter.convertToDTO(project, ProjectDTO.class);
         dto.setAssignedUsers(project.getAssignedUsers().stream()
-                .map(user -> DTOConverter.convertToDTO(user, UserDTO.class))
+                .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
                 .collect(Collectors.toSet()));
         return dto;
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public List<Project> getOrganizationProjects(String organizationId) {
         return projectRepository.findByOrganizationId(organizationId);
     }
@@ -83,6 +89,8 @@ public class ProjectService {
         }
     }
 
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     public ProjectDTO assignUsersToProject(String projectId, Set<String> userIds) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NoSuchElementException("Project not found"));
@@ -93,11 +101,13 @@ public class ProjectService {
         Project updatedProject = projectRepository.save(project);
         ProjectDTO dto = DTOConverter.convertToDTO(updatedProject, ProjectDTO.class);
         dto.setAssignedUsers(updatedProject.getAssignedUsers().stream()
-                .map(user -> DTOConverter.convertToDTO(user, UserDTO.class))
+                .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
                 .collect(Collectors.toSet()));
         return dto;
     }
 
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     public ProjectDTO removeUsersFromProject(String projectId, Set<String> userIds) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NoSuchElementException("Project not found"));
@@ -107,11 +117,13 @@ public class ProjectService {
         Project updatedProject = projectRepository.save(project);
         ProjectDTO dto = DTOConverter.convertToDTO(updatedProject, ProjectDTO.class);
         dto.setAssignedUsers(updatedProject.getAssignedUsers().stream()
-                .map(user -> DTOConverter.convertToDTO(user, UserDTO.class))
+                .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
                 .collect(Collectors.toSet()));
         return dto;
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public Page<Project> searchProjectsInOrganization(
             String organizationId,
             String searchTerm,
@@ -119,14 +131,20 @@ public class ProjectService {
         return projectRepository.searchProjectsInOrganization(organizationId, searchTerm, pageable);
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public long countProjectsByOrganization(String organizationId) {
         return projectRepository.countProjectsByOrganization(organizationId);
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public List<Project> findByProjectManager(String projectManagerId) {
         return projectRepository.findByProjectManagerId(projectManagerId);
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public List<ProjectDTO> getProjectsForUser(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -138,11 +156,11 @@ public class ProjectService {
                                 project.getId(),
                                 project.getName(),
                                 project.getDescription(),
-                                DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class),
-                                project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDTO.class)).collect(Collectors.toSet())
+                                DTOConverter.convertToDTO(project.getProjectManager(), UserDetailsDTO.class),
+                                project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDetailsDTO.class)).collect(Collectors.toSet())
                         );
                         dto.setAssignedUsers(project.getAssignedUsers().stream()
-                                .map(u -> DTOConverter.convertToDTO(u, UserDTO.class))
+                                .map(u -> DTOConverter.convertToDTO(u, UserDetailsDTO.class))
                                 .collect(Collectors.toSet()));
                         return dto;
                     }).collect(Collectors.toList());
@@ -153,11 +171,11 @@ public class ProjectService {
                                 project.getId(),
                                 project.getName(),
                                 project.getDescription(),
-                                DTOConverter.convertToDTO(project.getProjectManager(), UserDTO.class),
-                                project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDTO.class)).collect(Collectors.toSet())
+                                DTOConverter.convertToDTO(project.getProjectManager(), UserDetailsDTO.class),
+                                project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDetailsDTO.class)).collect(Collectors.toSet())
                         );
                         dto.setAssignedUsers(project.getAssignedUsers().stream()
-                                .map(u -> DTOConverter.convertToDTO(u, UserDTO.class))
+                                .map(u -> DTOConverter.convertToDTO(u, UserDetailsDTO.class))
                                 .collect(Collectors.toSet()));
                         return dto;
                     })
@@ -165,6 +183,8 @@ public class ProjectService {
         }
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
     public List<ProjectStatsDTO> getProjectStats(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -187,12 +207,16 @@ public class ProjectService {
         return projects.stream().map(project -> {
             Map<BugStatus, Long> statusCounts = project.getBugs().stream()
                     .collect(Collectors.groupingBy(Bug::getStatus, Collectors.counting()));
-
+ 
+            Map<String, Integer> allStatusCounts = new HashMap<>();
+             
+            for (BugStatus status : BugStatus.values()) {
+                allStatusCounts.put(status.name(), statusCounts.getOrDefault(status, 0L).intValue());
+            }
+            
             return new ProjectStatsDTO(
                     project.getName(),
-                    statusCounts.getOrDefault(BugStatus.OPEN, 0L).intValue(),
-                    statusCounts.getOrDefault(BugStatus.IN_PROGRESS, 0L).intValue(),
-                    statusCounts.getOrDefault(BugStatus.RESOLVED, 0L).intValue()
+                    allStatusCounts
             );
         }).collect(Collectors.toList());
     }

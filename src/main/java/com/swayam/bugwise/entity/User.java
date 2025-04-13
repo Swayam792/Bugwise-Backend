@@ -59,6 +59,7 @@ public class User implements UserDetails {
     private Set<Bug> assignedBugs = new HashSet<>();
 
     @ManyToMany(mappedBy = "users")
+    @JsonBackReference
     private Set<Organization> organizations = new HashSet<>();
 
     @Enumerated(EnumType.STRING)

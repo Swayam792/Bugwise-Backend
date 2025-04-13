@@ -44,4 +44,5 @@ public interface UserRepository extends JpaRepository<User, String> {
     List<User> findByOrganizationsIdAndRole(String organizationId, UserRole role);
     Set<User> findAllByIdIn(Set<String> ids);
     List<User> findByAssignedProjectsIdAndRole(String projectId, UserRole role);
+    Set<User> findAllByEmailIn(Set<String> emails);
 }

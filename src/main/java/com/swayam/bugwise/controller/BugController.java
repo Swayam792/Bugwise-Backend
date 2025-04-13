@@ -1,5 +1,6 @@
 package com.swayam.bugwise.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.BugDocument;
@@ -9,6 +10,7 @@ import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.service.AIAnalysisService;
 import com.swayam.bugwise.service.BugService;
 import com.swayam.bugwise.utils.DTOConverter;
+import groovy.util.logging.Slf4j;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,12 +21,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/bugs")
 @RequiredArgsConstructor
+@Slf4j
 public class BugController {
     private final BugService bugService;
     private final AIAnalysisService aiAnalysisService;
@@ -119,5 +123,13 @@ public class BugController {
     @GetMapping("/{bugId}/suggestions")
     public ResponseEntity<BugSuggestionDTO> getBugSuggestions(@PathVariable String bugId) {
         return ResponseEntity.ok(aiAnalysisService.getBugSuggestions(bugId));
+    }
+
+    @PutMapping("/{bugId}/assign-developers")
+    @PreAuthorize("hasRole('PROJECT_MANAGER')")
+    public ResponseEntity<BugDTO> assignBugToDevelopers(
+            @PathVariable String bugId,
+            @RequestBody List<String> developerEmails) {
+        return ResponseEntity.ok(bugService.assignBugToDevelopers(bugId, developerEmails));
     }
 }

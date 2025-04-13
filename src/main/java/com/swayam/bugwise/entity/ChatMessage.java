@@ -54,6 +54,14 @@ public class ChatMessage implements Serializable {
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @ElementCollection
+    @CollectionTable(name = "message_action_items",
+            joinColumns = @JoinColumn(name = "message_id"))
+    private Set<String> actionItems = new HashSet<>();
+
+    @Column
+    private Boolean hasActionItems = false;
+
     public void markAsRead(String userId) {
         if (readBy == null) {
             readBy = new HashSet<>();

@@ -20,6 +20,6 @@ public class ProjectDTO {
     private String id;
     private String name;
     private String description;
-    private UserDTO projectManager;
-    private Set<UserDTO> assignedUsers;
+    private UserDetailsDTO projectManager;
+    private Set<UserDetailsDTO> assignedUsers;
 }

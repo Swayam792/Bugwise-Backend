@@ -1,7 +1,5 @@
 package com.swayam.bugwise.service;
 
-import co.elastic.clients.elasticsearch._types.SortOptions;
-import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.*;
 import com.swayam.bugwise.enums.BugSeverity;
@@ -14,25 +12,25 @@ import com.swayam.bugwise.repository.jpa.BugRepository;
 import com.swayam.bugwise.repository.jpa.ProjectRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import com.swayam.bugwise.utils.DTOConverter;
+
+import co.elastic.clients.elasticsearch.security.get_role.Role;
+import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.elasticsearch.index.query.QueryBuilder;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.elasticsearch.core.SearchHits;
-import org.elasticsearch.index.query.QueryBuilders;
-import org.elasticsearch.search.sort.SortBuilders;
 import org.springframework.data.elasticsearch.core.SearchHit;
 
 import java.util.*;
@@ -49,6 +47,8 @@ public class BugService {
     private final ProjectRepository projectRepository;
     private final ElasticsearchOperations elasticsearchOperations;
 
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     public Bug createBug(BugRequestDTO request, String email) {
         User currentUser = userRepository.findByEmail(email).orElseThrow(() ->
                 new NoSuchElementException("User not found"));
@@ -70,7 +70,9 @@ public class BugService {
         return savedBug;
     }
 
-    @CacheEvict(value = "bugs", key = "#bugId")
+    @CachePut(value = "bugs", key = "#bugId")
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     public BugDTO updateBug(String bugId, BugRequestDTO request) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
@@ -86,10 +88,6 @@ public class BugService {
 
         if (request.getExpectedTimeHours() != null) {
             bug.setExpectedTimeHours(request.getExpectedTimeHours());
-        }
-
-        if (request.getRequiredDeveloperTypes() != null && !request.getRequiredDeveloperTypes().isEmpty()) {
-            bug.setRequiredDeveloperTypes(request.getRequiredDeveloperTypes());
         }
 
         Bug updatedBug = bugRepository.save(bug);
@@ -144,20 +142,12 @@ public class BugService {
         bugDocumentRepository.save(bugDocument);
     }
 
-    @CacheEvict(value = "bugs", key = "#bugId")
-    public BugDTO assignBugToDevelopers(String bugId, List<String> developerIds) {
+    @CachePut(value = "bugs", key = "#bugId")
+    public BugDTO assignBugToDevelopers(String bugId, List<String> developerEmails) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
 
-        List<User> developers = userRepository.findAllById(developerIds);
-
-        Set<DeveloperType> requiredTypes = bug.getRequiredDeveloperTypes();
-        developers.forEach(dev -> {
-            if (!requiredTypes.contains(dev.getDeveloperType())) {
-                throw new ValidationException(Map.of("error",
-                        "Developer " + dev.getEmail() + " doesn't have required skills for this bug"));
-            }
-        });
+        Set<User> developers = userRepository.findAllByEmailIn(new HashSet<>(developerEmails));
 
         bug.setAssignedDeveloper((Set<User>) developers);
         bug.setStatus(BugStatus.OPEN);
