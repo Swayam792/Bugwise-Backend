@@ -10,6 +10,7 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProjectStatsDTO {
-    private String projectName; 
+    private String projectName;
+    private String organizationId;
     private Map<String, Integer> statusCounts;
 }

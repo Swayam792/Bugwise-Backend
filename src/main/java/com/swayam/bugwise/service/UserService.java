@@ -45,6 +45,15 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    public List<UserDetailsDTO> findActiveUsers() {
+        return userRepository.findAll()
+                .stream()
+                .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
+                .collect(Collectors.toList());
+    }
+
     public List<UserDetailsDTO> findDevelopers(String projectId, String organizationId) {
         List<User> userList = new ArrayList<>();
         if(projectId != null) {

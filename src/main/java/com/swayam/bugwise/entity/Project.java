@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.swayam.bugwise.enums.ProjectStatus;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -24,7 +25,7 @@ public class Project extends BaseEntity {
     @NotBlank
     private String description;
 
-    @NotBlank
+    @NotNull
     private ProjectStatus status = ProjectStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)

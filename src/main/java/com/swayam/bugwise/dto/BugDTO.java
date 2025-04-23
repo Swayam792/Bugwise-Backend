@@ -6,6 +6,7 @@ import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
+import com.swayam.bugwise.enums.BugType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -23,6 +24,7 @@ public class BugDTO implements Serializable {
     private String title;
     private String description;
     private BugStatus status;
+    private BugType bugType;
     private BugSeverity severity;
     private ProjectDTO project;
     private UserDetailsDTO assignedDeveloper;
@@ -33,4 +35,6 @@ public class BugDTO implements Serializable {
     private String projectManagerName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer actualTimeHours;
+    private Integer expectedTimeHours;
 }

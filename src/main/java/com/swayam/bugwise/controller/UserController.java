@@ -23,6 +23,12 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
 
+    @GetMapping("")
+    public ResponseEntity<List<UserDetailsDTO>> getActiveUsers() {
+        List<UserDetailsDTO> users = userService.findActiveUsers();
+        return ResponseEntity.ok(users);
+    }
+
     @GetMapping("/active")
     public ResponseEntity<List<UserDetailsDTO>> getActiveUsersByOrganizationAndRole(
             @RequestParam String organizationId,

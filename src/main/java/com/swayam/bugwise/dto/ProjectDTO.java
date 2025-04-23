@@ -3,6 +3,7 @@ package com.swayam.bugwise.dto;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.User;
+import com.swayam.bugwise.enums.ProjectStatus;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -20,6 +21,8 @@ public class ProjectDTO {
     private String id;
     private String name;
     private String description;
+    private String organizationId;
+    private ProjectStatus status;
     private UserDetailsDTO projectManager;
     private Set<UserDetailsDTO> assignedUsers;
 }

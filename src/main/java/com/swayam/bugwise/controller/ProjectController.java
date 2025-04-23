@@ -40,6 +40,14 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.assignUsersToProject(projectId, userIds));
     }
 
+    @PutMapping("/{projectId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
+    public ResponseEntity<ProjectDTO> updateProject(
+            @PathVariable String projectId,
+            @Valid @RequestBody ProjectUpdateDTO request) {
+        return ResponseEntity.ok(projectService.updateProject(projectId, request));
+    }
+
     @PostMapping("/{projectId}/remove-users")
     @PreAuthorize("hasAnyRole('ADMIN', 'PROJECT_MANAGER')")
     public ResponseEntity<ProjectDTO> removeUsersFromProject(

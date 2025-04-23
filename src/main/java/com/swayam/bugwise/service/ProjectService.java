@@ -70,6 +70,7 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new NoSuchElementException("Project not found"));
         ProjectDTO dto = DTOConverter.convertToDTO(project, ProjectDTO.class);
+        dto.setOrganizationId(project.getOrganization().getId());
         dto.setAssignedUsers(project.getAssignedUsers().stream()
                 .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
                 .collect(Collectors.toSet()));
@@ -99,6 +100,41 @@ public class ProjectService {
         project.getAssignedUsers().addAll(users);
 
         Project updatedProject = projectRepository.save(project);
+        ProjectDTO dto = DTOConverter.convertToDTO(updatedProject, ProjectDTO.class);
+        dto.setAssignedUsers(updatedProject.getAssignedUsers().stream()
+                .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
+                .collect(Collectors.toSet()));
+        return dto;
+    }
+
+    @Transactional
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    public ProjectDTO updateProject(String projectId, ProjectUpdateDTO request) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new NoSuchElementException("Project not found"));
+
+        project.setName(request.getName());
+        project.setDescription(request.getDescription());
+
+        if (request.getStatus() != null) {
+            project.setStatus(request.getStatus());
+        }
+
+        // Update project manager if changed
+        if (!project.getProjectManager().getId().equals(request.getProjectManagerId())) {
+            User newProjectManager = userRepository.findById(request.getProjectManagerId())
+                    .orElseThrow(() -> new NoSuchElementException("Project Manager not found"));
+            validateProjectManager(newProjectManager);
+            project.setProjectManager(newProjectManager);
+        }
+
+        if (request.getAssignedUserIds() != null) {
+            Set<User> assignedUsers = userRepository.findAllByIdIn(request.getAssignedUserIds());
+            project.setAssignedUsers(assignedUsers);
+        }
+
+        Project updatedProject = projectRepository.save(project);
+
         ProjectDTO dto = DTOConverter.convertToDTO(updatedProject, ProjectDTO.class);
         dto.setAssignedUsers(updatedProject.getAssignedUsers().stream()
                 .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
@@ -156,6 +192,8 @@ public class ProjectService {
                                 project.getId(),
                                 project.getName(),
                                 project.getDescription(),
+                                project.getOrganization().getId(),
+                                project.getStatus(),
                                 DTOConverter.convertToDTO(project.getProjectManager(), UserDetailsDTO.class),
                                 project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDetailsDTO.class)).collect(Collectors.toSet())
                         );
@@ -171,6 +209,8 @@ public class ProjectService {
                                 project.getId(),
                                 project.getName(),
                                 project.getDescription(),
+                                project.getOrganization().getId(),
+                                project.getStatus(),
                                 DTOConverter.convertToDTO(project.getProjectManager(), UserDetailsDTO.class),
                                 project.getAssignedUsers().stream().map(eachUser -> DTOConverter.convertToDTO(eachUser, UserDetailsDTO.class)).collect(Collectors.toSet())
                         );
@@ -216,6 +256,7 @@ public class ProjectService {
             
             return new ProjectStatsDTO(
                     project.getName(),
+                    project.getOrganization().getId(),
                     allStatusCounts
             );
         }).collect(Collectors.toList());

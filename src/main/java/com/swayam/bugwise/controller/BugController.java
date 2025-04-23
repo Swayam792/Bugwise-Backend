@@ -1,15 +1,11 @@
 package com.swayam.bugwise.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.Bug;
-import com.swayam.bugwise.entity.BugDocument;
-import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.service.AIAnalysisService;
 import com.swayam.bugwise.service.BugService;
-import com.swayam.bugwise.utils.DTOConverter;
 import groovy.util.logging.Slf4j;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,9 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/bugs")
@@ -35,15 +29,16 @@ public class BugController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('TESTER', 'DEVELOPER', 'PROJECT_MANAGER')")
-    public ResponseEntity<Bug> createBug(@Valid @RequestBody BugRequestDTO request, Authentication authentication) {
-        Bug bug = bugService.createBug(request, authentication.getName());
-        return ResponseEntity.ok(bug);
+    public ResponseEntity<Void> createBug(@Valid @RequestBody BugRequestDTO request, Authentication authentication) {
+        bugService.createBug(request, authentication.getName());
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{bugId}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'PROJECT_MANAGER')")
-    public ResponseEntity<BugDTO> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request) {
-        return ResponseEntity.ok(bugService.updateBug(bugId, request));
+    public ResponseEntity<?> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request) {
+        bugService.updateBug(bugId, request);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{bugId}")

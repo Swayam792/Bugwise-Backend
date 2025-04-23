@@ -46,19 +46,19 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
-    @OneToMany(mappedBy = "projectManager")
+    @OneToMany(mappedBy = "projectManager", fetch = FetchType.LAZY)
     @JsonManagedReference
     private Set<Project> managedProjects = new HashSet<>();
 
-    @ManyToMany(mappedBy = "assignedUsers")
+    @ManyToMany(mappedBy = "assignedUsers", fetch = FetchType.LAZY)
     @JsonBackReference
     private Set<Project> assignedProjects = new HashSet<>();
 
-    @ManyToMany(mappedBy = "assignedDeveloper")
+    @ManyToMany(mappedBy = "assignedDeveloper", fetch = FetchType.LAZY)
     @JsonBackReference
     private Set<Bug> assignedBugs = new HashSet<>();
 
-    @ManyToMany(mappedBy = "users")
+    @ManyToMany(mappedBy = "users", fetch = FetchType.LAZY)
     @JsonBackReference
     private Set<Organization> organizations = new HashSet<>();
 

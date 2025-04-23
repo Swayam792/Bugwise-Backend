@@ -23,11 +23,11 @@ public class Organization extends BaseEntity {
     @NotBlank(message = "Description cannot be blank")
     private String description;
 
-    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "organization", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonManagedReference
     private Set<Project> projects = new HashSet<>();
 
-    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE }, fetch = FetchType.LAZY)
     @JoinTable(
             name = "organization_user",
             joinColumns = @JoinColumn(name = "organization_id"),
@@ -36,10 +36,10 @@ public class Organization extends BaseEntity {
     @JsonManagedReference
     private Set<User> users = new HashSet<>();
 
-    @OneToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     private User admin;
 
     public boolean isAdmin(User user) {
-        return admin.equals(user);
+        return this.admin.getId().equals(user.getId());
     }
 }

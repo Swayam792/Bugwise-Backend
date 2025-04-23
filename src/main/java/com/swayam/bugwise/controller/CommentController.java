@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,8 +20,18 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<Comment> createComment(@Valid @RequestBody CommentRequestDTO request) {
-        return ResponseEntity.ok(commentService.createComment(request));
+    public ResponseEntity<Void> createComment(@Valid @RequestBody CommentRequestDTO request) {
+        commentService.createComment(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{commentId}")
+    public ResponseEntity<Void> updateComment(
+            Authentication authentication,
+            @PathVariable String commentId,
+            @Valid @RequestBody CommentRequestDTO request) {
+        commentService.updateComment(request, commentId, authentication.getName());
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/bug/{bugId}")

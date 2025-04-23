@@ -5,6 +5,7 @@ import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.Comment;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.exception.ResourceNotFoundException;
+import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.BugRepository;
 import com.swayam.bugwise.repository.jpa.CommentRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 
 @Service
@@ -31,7 +33,7 @@ public class CommentService {
 
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    public Comment createComment(CommentRequestDTO request) {
+    public void createComment(CommentRequestDTO request) {
         Bug bug = bugRepository.findById(request.getBugId())
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
 
@@ -40,7 +42,7 @@ public class CommentService {
         comment.setBug(bug);
         comment.setUser(userService.getCurrentUser());
 
-        return commentRepository.save(comment);
+        commentRepository.save(comment);
     }
 
     @Transactional(readOnly = true)
@@ -55,5 +57,21 @@ public class CommentService {
     public List<Comment> getUserComments(String userId) {
         userRepository.findById(userId).orElseThrow(() -> new UsernameNotFoundException("User not found"));
         return commentRepository.findByUserId(userId);
+    }
+
+    public void updateComment(CommentRequestDTO request, String commentId, String currentUsername) {
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new NoSuchElementException("Comment not found with id: " + commentId));
+
+        if (!comment.getBug().getId().equals(request.getBugId())) {
+            throw new IllegalArgumentException("Comment does not belong to the specified bug");
+        }
+
+        if (!comment.getUser().getUsername().equals(currentUsername)) {
+            throw new ValidationException(Map.of("error", "You are not authorized to update this comment"));
+        }
+
+        comment.setContent(request.getContent());
+        commentRepository.save(comment);
     }
 }

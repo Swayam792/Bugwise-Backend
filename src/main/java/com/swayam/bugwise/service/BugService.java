@@ -99,12 +99,57 @@ public class BugService {
     public BugDTO getBug(String bugId) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found with id: " + bugId));
-        BugDTO dto = DTOConverter.convertToDTO(bug, BugDTO.class);
-        dto.setProject(DTOConverter.convertToDTO(bug.getProject(), ProjectDTO.class));
-        dto.setOrganizationName(bug.getProject().getOrganization().getName());
-        if (bug.getProject().getProjectManager() != null) {
-            dto.setProjectManagerName(bug.getProject().getProjectManager().getUsername());
+
+        BugDTO dto = new BugDTO();
+        dto.setId(bug.getId());
+        dto.setTitle(bug.getTitle());
+        dto.setDescription(bug.getDescription());
+        dto.setStatus(bug.getStatus());
+        dto.setSeverity(bug.getSeverity());
+        dto.setCreatedAt(bug.getCreatedAt());
+        dto.setUpdatedAt(bug.getUpdatedAt());
+        dto.setBugType(bug.getBugType());
+        dto.setActualTimeHours(bug.getActualTimeHours());
+        dto.setExpectedTimeHours(bug.getExpectedTimeHours());
+
+        Project project = bug.getProject();
+        ProjectDTO projectDTO = new ProjectDTO();
+        projectDTO.setId(project.getId());
+        projectDTO.setName(project.getName());
+        projectDTO.setDescription(project.getDescription());
+        dto.setProject(projectDTO);
+
+        if (project.getOrganization() != null) {
+            dto.setOrganizationId(project.getOrganization().getId());
+            dto.setOrganizationName(project.getOrganization().getName());
         }
+
+        if (project.getProjectManager() != null) {
+            dto.setProjectManagerId(project.getProjectManager().getId());
+            dto.setProjectManagerName(project.getProjectManager().getUsername());
+        }
+
+        if (bug.getReportedBy() != null) {
+            UserDetailsDTO reportedByDTO = new UserDetailsDTO();
+            reportedByDTO.setId(bug.getReportedBy().getId());
+            reportedByDTO.setRole(bug.getReportedBy().getRole());
+            reportedByDTO.setEmail(bug.getReportedBy().getEmail());
+            reportedByDTO.setFirstName(bug.getReportedBy().getFirstName());
+            reportedByDTO.setLastName(bug.getReportedBy().getLastName());
+            dto.setReportedBy(reportedByDTO);
+        }
+
+        if (!bug.getAssignedDeveloper().isEmpty()) {
+            User developer = bug.getAssignedDeveloper().iterator().next();
+            UserDetailsDTO developerDTO = new UserDetailsDTO();
+            developerDTO.setId(developer.getId());
+            developerDTO.setRole(developer.getRole());
+            developerDTO.setEmail(developer.getEmail());
+            developerDTO.setFirstName(developer.getFirstName());
+            developerDTO.setLastName(developer.getLastName());
+            dto.setAssignedDeveloper(developerDTO);
+        }
+
         return dto;
     }
 
