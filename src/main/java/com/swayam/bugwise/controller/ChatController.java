@@ -7,31 +7,34 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.handler.annotation.SendTo;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.stereotype.Controller;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.List;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class ChatController {
     private final ChatService chatService;
 
     @MessageMapping("/bug.chat.send.{bugId}")
-    @SendTo("/topic/bug.{bugId}")
-    public ChatMessage sendMessage(
+    public void sendMessage(
             @DestinationVariable String bugId,
             @Valid @Payload ChatMessageRequestDTO chatMessage,
             Authentication authentication) {
         chatMessage.setBugId(bugId);
         chatMessage.setSender(authentication.getName());
-        return chatService.sendMessage(chatMessage);
+
+        chatService.saveMessage(chatMessage);
+    }
+
+    @MessageMapping("/bug.chat.typing.{bugId}")
+    public void sendTypingNotification(
+            @DestinationVariable String bugId,
+            Authentication authentication) {
+        chatService.sendTypingNotification(bugId, authentication.getName());
     }
 
     @MessageMapping("/bug.chat.join.{bugId}")
@@ -42,14 +45,18 @@ public class ChatController {
         String username = authentication.getName();
         headerAccessor.getSessionAttributes().put("username", username);
         headerAccessor.getSessionAttributes().put("bugId", bugId);
-        chatService.handleUserJoin(bugId, username);
+
+        chatService.sendCurrentParticipants(bugId, username);
+
+        chatService.sendJoinNotification(bugId, username);
     }
 
-    @MessageMapping("/bug.chat.typing.{bugId}")
-    public void sendTypingNotification(
+    @MessageMapping("/bug.chat.leave.{bugId}")
+    public void leaveBugChat(
             @DestinationVariable String bugId,
             Authentication authentication) {
-        chatService.sendTypingNotification(bugId, authentication.getName());
+        String username = authentication.getName();
+        chatService.sendLeaveNotification(bugId, username);
     }
 
     @MessageMapping("/bug.chat.read.{bugId}")
@@ -59,18 +66,8 @@ public class ChatController {
         chatService.markMessagesAsRead(bugId, authentication.getName());
     }
 
-    @MessageMapping("/bug.chat.leave.{bugId}")
-    public void leaveBugChat(
-            @DestinationVariable String bugId,
-            SimpMessageHeaderAccessor headerAccessor,
-            Authentication authentication) {
-        String username = authentication.getName();
-        chatService.handleUserLeave(bugId, username);
-    }
-
     @GetMapping("/api/v1/chat/messages/{bugId}")
-    @ResponseBody
-    public List<ChatMessage> getMessages(@PathVariable String bugId) {
-        return chatService.getMessagesForBug(bugId);
+    public List<ChatMessage> getMessagesByBugId(@PathVariable String bugId) {
+        return chatService.getMessagesByBugId(bugId);
     }
 }

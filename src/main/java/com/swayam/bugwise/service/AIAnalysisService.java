@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHit;
@@ -99,6 +100,7 @@ public class AIAnalysisService {
         Respond with a COMMA-SEPARATED LIST of developer IDs in order of suitability.
         """;
 
+    @Cacheable(value = "bugSuggestions", key = "#bugId")
     public BugSuggestionDTO getBugSuggestions(String bugId) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));

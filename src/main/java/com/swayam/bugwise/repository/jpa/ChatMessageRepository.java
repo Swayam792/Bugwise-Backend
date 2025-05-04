@@ -10,7 +10,7 @@ import java.util.List;
 
 @Repository
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, String> {
-    List<ChatMessage> findByBugIdOrderByCreatedAtDesc(String bugId);
+    List<ChatMessage> findByBugIdOrderByCreatedAtAsc(String bugId);
 
     @Query(value = "SELECT cm FROM ChatMessage cm " +
             "WHERE cm.bug.id = :bugId " +

@@ -15,4 +15,6 @@ public class ChatMessageRequestDTO {
 
     @NotNull(message = "Sender is required")
     private String sender;
+
+    private String tempId;
 }
