@@ -1,7 +1,8 @@
 package com.swayam.bugwise.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.swayam.bugwise.enums.MessageType;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -18,6 +19,10 @@ import java.util.Set;
 @AllArgsConstructor
 @Table(name = "chat_messages")
 @Builder
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property = "id"
+)
 public class ChatMessage implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -26,20 +31,11 @@ public class ChatMessage implements Serializable {
     @Column(nullable = false)
     private String content;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bug_id", nullable = false)
-    @JsonBackReference
-    private Bug bug;
+    @Column(nullable = false)
+    private String bugId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "sender_id", nullable = false)
-    @JsonBackReference
-    private User sender;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "recipient_id")
-    @JsonBackReference
-    private User recipient;
+    @Column(nullable = false)
+    private String sender;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -69,11 +65,11 @@ public class ChatMessage implements Serializable {
         readBy.add(userId);
     }
 
-    public static ChatMessage createMessage(String content, Bug bug, User sender, MessageType type) {
+    public static ChatMessage createMessage(String content, String bugId, String senderId, MessageType type) {
         ChatMessage message = new ChatMessage();
         message.setContent(content);
-        message.setBug(bug);
-        message.setSender(sender);
+        message.setBugId(bugId);
+        message.setSender(senderId);
         message.setType(type);
         message.setCreatedAt(LocalDateTime.now());
         message.setReadBy(new HashSet<>());
@@ -85,9 +81,8 @@ public class ChatMessage implements Serializable {
         return "ChatMessage{" +
                 "id='" + id + '\'' +
                 ", content='" + content + '\'' +
-                ", bug=" + (bug != null ? bug.getId() : null) +
-                ", sender=" + (sender != null ? sender.getId() : null) +
-                ", recipient=" + (recipient != null ? recipient.getId() : null) +
+                ", bug=" + bugId +
+                ", sender=" + sender +
                 ", type=" + type +
                 ", createdAt=" + createdAt +
                 '}';

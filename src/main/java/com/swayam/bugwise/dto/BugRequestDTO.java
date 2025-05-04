@@ -25,4 +25,5 @@ public class BugRequestDTO {
 
     private BugType bugType;
     private Integer expectedTimeHours;
+    private Integer actualTimeHours;
 }

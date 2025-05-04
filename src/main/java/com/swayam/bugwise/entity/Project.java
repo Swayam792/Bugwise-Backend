@@ -30,16 +30,16 @@ public class Project extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "organization_id")
-    @JsonBackReference
+    @JsonBackReference("organization-projects")
     private Organization organization;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_manager_id")
-    @JsonBackReference
+    @JsonBackReference("user-managed-projects")
     private User projectManager;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL)
-    @JsonManagedReference
+    @JsonManagedReference("project-bugs")
     private Set<Bug> bugs = new HashSet<>();
 
     @ManyToMany
@@ -48,6 +48,6 @@ public class Project extends BaseEntity {
             joinColumns = @JoinColumn(name = "project_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
-    @JsonManagedReference
-    private Set<User> assignedUsers;
+    @JsonBackReference("project-assigned-users")
+    private Set<User> assignedUsers = new HashSet<>();
 }

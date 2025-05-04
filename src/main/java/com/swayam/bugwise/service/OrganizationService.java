@@ -43,6 +43,8 @@ public class OrganizationService {
         organization.setName(request.getName());
         organization.setDescription(request.getDescription());
         organization.setAdmin(admin);
+        organization.setUsers(new HashSet<>());
+        organization.getUsers().add(admin);
 
         organizationRepository.save(organization);
     }
@@ -176,7 +178,7 @@ public class OrganizationService {
             stats.setOrganizationId(org.getId());
             stats.setOrganizationName(org.getName());
             stats.setProjectCount(org.getProjects().size());
-            stats.setMemberCount(org.getUsers().size() + (org.getAdmin() != null ? 1 : 0));
+            stats.setMemberCount(org.getUsers().size());
             return stats;
         }).collect(Collectors.toList());
     }

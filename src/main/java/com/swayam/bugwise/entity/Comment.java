@@ -19,11 +19,11 @@ public class Comment extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "bug_id")
-    @JsonBackReference
+    @JsonBackReference("bug-comments")
     private Bug bug;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    @JsonBackReference
+    @JsonBackReference("user-comments")
     private User user;
 }

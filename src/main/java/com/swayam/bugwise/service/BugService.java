@@ -90,6 +90,11 @@ public class BugService {
             bug.setExpectedTimeHours(request.getExpectedTimeHours());
         }
 
+        if(request.getActualTimeHours() != null) {
+            bug.setActualTimeHours(request.getActualTimeHours());
+        }
+
+
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
         return DTOConverter.convertToDTO(updatedBug, BugDTO.class);

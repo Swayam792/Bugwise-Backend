@@ -2,18 +2,17 @@ package com.swayam.bugwise.service;
 
 import com.swayam.bugwise.dto.ChatMessageRequestDTO;
 import com.swayam.bugwise.dto.ParticipantsUpdateDTO;
-import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.ChatMessage;
-import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.MessageType;
 import com.swayam.bugwise.enums.ParticipantAction;
 import com.swayam.bugwise.exception.ResourceNotFoundException;
 import com.swayam.bugwise.repository.jpa.BugRepository;
 import com.swayam.bugwise.repository.jpa.ChatMessageRepository;
+import com.swayam.bugwise.repository.jpa.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.MessageHeaders;
 import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.Payload;
@@ -33,28 +32,38 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final BugRepository bugRepository;
-    private final UserService userService;
     private final SimpMessagingTemplate messagingTemplate;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final UserRepository userRepository;
 
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<String>> activeBugParticipants = new ConcurrentHashMap<>();
 
     private static final String CHAT_MESSAGES_TOPIC = "chat-messages";
+    private static final String SYSTEM_MESSAGES_TOPIC = "system-messages";
     private static final String TYPING_NOTIFICATIONS_TOPIC = "typing-notifications";
     private static final String READ_RECEIPTS_TOPIC = "read-receipts";
     private static final String PARTICIPANTS_UPDATES_TOPIC = "participants-updates";
 
     public ChatMessage sendMessage(ChatMessageRequestDTO request) {
         try {
-            Bug bug = bugRepository.findById(request.getBugId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Bug not found with id: " + request.getBugId()));
+            if (!bugRepository.existsById(request.getBugId())) {
+                throw new NoSuchElementException("Bug not found with id: " + request.getBugId());
+            }
 
-            User currentUser = userService.getCurrentUser();
+            userRepository.findByEmail(request.getSender()).orElseThrow(
+                    () -> new NoSuchElementException("Sender not found")
+            );
 
-            ChatMessage message = ChatMessage.createMessage(request.getContent(), bug, currentUser, MessageType.CHAT);
+            ChatMessage message = ChatMessage.createMessage(
+                    request.getContent(),
+                    request.getBugId(),
+                    request.getSender(),
+                    MessageType.CHAT
+            );
 
             ChatMessage savedMessage = chatMessageRepository.save(message);
 
+            // Only chat messages go to the chat-messages topic
             kafkaTemplate.send(CHAT_MESSAGES_TOPIC, savedMessage);
 
             return savedMessage;
@@ -67,17 +76,26 @@ public class ChatService {
     @KafkaListener(topics = CHAT_MESSAGES_TOPIC, groupId = "bugwise-chat-group")
     public void listenChatMessages(@Payload ChatMessage message, @Headers MessageHeaders headers) {
         try {
-            messagingTemplate.convertAndSend("/topic/bug." + message.getBug().getId(), message);
-
-            if (message.getRecipient() != null) {
-                messagingTemplate.convertAndSendToUser(
-                        message.getRecipient().getId().toString(),
-                        "/queue/private",
-                        message
-                );
+            if (message.getBugId() != null) {
+                messagingTemplate.convertAndSend("/topic/bug." + message.getBugId(), message);
+            } else {
+                log.warn("Received ChatMessage without BugId: {}", message.getId());
             }
         } catch (Exception e) {
             log.error("Error broadcasting chat message: ", e);
+        }
+    }
+
+    @KafkaListener(topics = SYSTEM_MESSAGES_TOPIC, groupId = "bugwise-chat-group")
+    public void listenSystemMessages(@Payload ChatMessage message, @Headers MessageHeaders headers) {
+        try {
+            if (message.getBugId() != null) {
+                messagingTemplate.convertAndSend("/topic/bug." + message.getBugId(), message);
+            } else {
+                log.warn("Received System Message without BugId: {}", message.getId());
+            }
+        } catch (Exception e) {
+            log.error("Error broadcasting system message: ", e);
         }
     }
 
@@ -88,20 +106,20 @@ public class ChatService {
             );
 
             if (participants.addIfAbsent(email)) {
-                Bug bug = bugRepository.findById(bugId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Bug not found with id: " + bugId));
+                if (!bugRepository.existsById(bugId)) {
+                    throw new ResourceNotFoundException("Bug not found with id: " + bugId);
+                }
 
                 ChatMessage joinMessage = ChatMessage.builder()
-                        .bug(bug)
-                        .sender(userService.getUserByEmail(email))
+                        .id(UUID.randomUUID().toString())
+                        .bugId(bugId)
+                        .sender(email)
                         .type(MessageType.JOIN)
                         .createdAt(LocalDateTime.now())
                         .build();
 
-                chatMessageRepository.save(joinMessage);
-
-                // Publish join message to Kafka
-                kafkaTemplate.send(CHAT_MESSAGES_TOPIC, joinMessage);
+                // System messages (JOIN/LEAVE) go to system-messages topic
+                kafkaTemplate.send(SYSTEM_MESSAGES_TOPIC, joinMessage);
 
                 ParticipantsUpdateDTO updateDTO = new ParticipantsUpdateDTO(
                         bugId,
@@ -122,8 +140,8 @@ public class ChatService {
     public void listenParticipantsUpdates(ParticipantsUpdateDTO updateDTO) {
         try {
             messagingTemplate.convertAndSend(
-                    "/topic/bug." + updateDTO.getBugId() + "/participants",
-                    updateDTO
+                    "/topic/bug." + updateDTO.getBugId() + ".participants",
+                    updateDTO.getUsername()
             );
         } catch (Exception e) {
             log.error("Error broadcasting participants update: ", e);
@@ -135,19 +153,20 @@ public class ChatService {
             CopyOnWriteArrayList<String> participants = activeBugParticipants.get(bugId);
             if (participants != null && participants.remove(email)) {
 
-                Bug bug = bugRepository.findById(bugId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Bug not found with id: " + bugId));
+                if (!bugRepository.existsById(bugId)) {
+                    throw new ResourceNotFoundException("Bug not found with id: " + bugId);
+                }
 
                 ChatMessage leaveMessage = ChatMessage.builder()
-                        .bug(bug)
-                        .sender(userService.getUserByEmail(email))
+                        .id(UUID.randomUUID().toString())
+                        .bugId(bugId)
+                        .sender(email)
                         .type(MessageType.LEAVE)
                         .createdAt(LocalDateTime.now())
                         .build();
 
-                chatMessageRepository.save(leaveMessage);
-
-                kafkaTemplate.send(CHAT_MESSAGES_TOPIC, leaveMessage);
+                // System messages (JOIN/LEAVE) go to system-messages topic
+                kafkaTemplate.send(SYSTEM_MESSAGES_TOPIC, leaveMessage);
 
                 ParticipantsUpdateDTO updateDTO = new ParticipantsUpdateDTO(
                         bugId,
@@ -176,8 +195,10 @@ public class ChatService {
             }
 
             ChatMessage typingMessage = ChatMessage.builder()
-                    .sender(userService.getUserByEmail(email))
+                    .bugId(bugId)
+                    .sender(email)
                     .type(MessageType.TYPING)
+                    .createdAt(LocalDateTime.now())
                     .build();
 
             kafkaTemplate.send(TYPING_NOTIFICATIONS_TOPIC, typingMessage);
@@ -191,7 +212,7 @@ public class ChatService {
     public void listenTypingNotifications(ChatMessage typingMessage) {
         try {
             messagingTemplate.convertAndSend(
-                    "/topic/bug." + typingMessage.getBug().getId() + "/typing",
+                    "/topic/bug." + typingMessage.getBugId() + "/typing",
                     typingMessage
             );
         } catch (Exception e) {
@@ -209,7 +230,6 @@ public class ChatService {
                 unreadMessages.forEach(message -> message.markAsRead(userId));
                 chatMessageRepository.saveAll(unreadMessages);
 
-                // Publish read receipts to Kafka
                 kafkaTemplate.send(READ_RECEIPTS_TOPIC, unreadMessages);
             }
         } catch (Exception e) {
@@ -222,14 +242,17 @@ public class ChatService {
     public void listenReadReceipts(List<ChatMessage> readMessages) {
         try {
             readMessages.forEach(message -> {
-                messagingTemplate.convertAndSendToUser(
-                        message.getRecipient().getId().toString(),
-                        "/queue/read-receipts",
+                messagingTemplate.convertAndSend(
+                        "/topic/bug." + message.getBugId() + "/read-receipts",
                         message.getId()
                 );
             });
         } catch (Exception e) {
             log.error("Error broadcasting read receipts: ", e);
         }
+    }
+
+    public List<ChatMessage> getMessagesForBug(String bugId) {
+        return chatMessageRepository.findByBugIdOrderByCreatedAtDesc(bugId);
     }
 }

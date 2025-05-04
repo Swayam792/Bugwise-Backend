@@ -42,7 +42,7 @@ public class Bug extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("project-bugs")
     private Project project;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -51,21 +51,17 @@ public class Bug extends BaseEntity {
             joinColumns = @JoinColumn(name = "bug_id"),
             inverseJoinColumns = @JoinColumn(name = "developer_id")
     )
-    @JsonManagedReference
+    @JsonManagedReference("bug-assigned-developers")
     private Set<User> assignedDeveloper = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reported_by_id", nullable = false)
-    @JsonBackReference
+    @JsonBackReference("user-reported-bugs")
     private User reportedBy;
 
     @OneToMany(mappedBy = "bug", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
+    @JsonManagedReference("bug-comments")
     private Set<Comment> comments = new HashSet<>();
-
-    @OneToMany(mappedBy = "bug", cascade = CascadeType.ALL, orphanRemoval = true)
-    @JsonManagedReference
-    private Set<ChatMessage> chatMessages = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     private BugType bugType;

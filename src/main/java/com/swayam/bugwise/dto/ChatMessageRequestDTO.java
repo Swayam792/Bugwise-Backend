@@ -11,8 +11,8 @@ public class ChatMessageRequestDTO {
     @NotBlank(message = "Content is required")
     private String content;
 
-    @NotNull(message = "Bug ID is required")
     private String bugId;
 
-    private String recipientId;
+    @NotNull(message = "Sender is required")
+    private String sender;
 }
