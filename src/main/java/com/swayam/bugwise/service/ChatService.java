@@ -36,7 +36,6 @@ public class ChatService {
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
 
-        // Include the tempId in the response to match with pending messages on frontend
         Map<String, Object> response = Map.of(
                 "id", savedMessage.getId(),
                 "bugId", savedMessage.getBugId(),
@@ -46,7 +45,6 @@ public class ChatService {
                 "tempId", messageDTO.getTempId()
         );
 
-        // Send to the topic that clients are subscribed to
         messagingTemplate.convertAndSend("/topic/bug." + messageDTO.getBugId(), response);
 
         return savedMessage;

@@ -15,6 +15,7 @@ import java.util.Set;
 public class BugSuggestionDTO {
     private String bugId;
     private BugType suggestedBugType;
+    private String suggestedSeverity;
     private Set<DeveloperType> requiredDeveloperTypes;
     private int estimatedTimeHours;
     private List<DeveloperSuggestionDTO> suggestedDevelopers;

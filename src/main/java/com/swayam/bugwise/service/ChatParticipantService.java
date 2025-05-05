@@ -31,7 +31,4 @@ public class ChatParticipantService {
         return new HashSet<>(bugParticipants.getOrDefault(bugId, Collections.emptySet()));
     }
 
-    public int getParticipantCount(String bugId) {
-        return bugParticipants.getOrDefault(bugId, Collections.emptySet()).size();
-    }
 }

@@ -100,12 +100,30 @@ public class AIAnalysisService {
         Respond with a COMMA-SEPARATED LIST of developer IDs in order of suitability.
         """;
 
+    private static final String SEVERITY_ANALYSIS_PROMPT = """
+        Analyze the following bug report and determine its severity level from these categories:
+        CRITICAL, HIGH, MEDIUM, LOW.
+        
+        Consider these guidelines:
+        - CRITICAL: System crash, data loss, security vulnerability, blocks all usage
+        - HIGH: Major functionality broken, workaround unavailable, affects many users
+        - MEDIUM: Minor functionality broken, has workaround, affects some users
+        - LOW: Cosmetic issue, minor annoyance, doesn't affect functionality
+        
+        Bug Title: {title}
+        Bug Description: {description}
+        Bug Type: {bugType}
+        
+        Respond ONLY with one of the severity levels (CRITICAL, HIGH, MEDIUM, LOW).
+        """;
+
     @Cacheable(value = "bugSuggestions", key = "#bugId")
     public BugSuggestionDTO getBugSuggestions(String bugId) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
 
         BugType bugType = determineBugTypeWithAI(bug.getTitle(), bug.getDescription());
+        String severity = determineBugSeverityWithAI(bug.getTitle(), bug.getDescription(), bugType);
         Set<DeveloperType> requiredTypes = determineRequiredDeveloperTypesWithAI(bugType);
         int estimatedTime = estimateTimeToFixWithAI(bug, bugType);
         List<User> suggestedDevelopers = getDeveloperSuggestions(bug, requiredTypes);
@@ -113,6 +131,7 @@ public class AIAnalysisService {
         BugSuggestionDTO suggestion = new BugSuggestionDTO();
         suggestion.setBugId(bugId);
         suggestion.setSuggestedBugType(bugType);
+        suggestion.setSuggestedSeverity(severity);
         suggestion.setRequiredDeveloperTypes(requiredTypes);
         suggestion.setEstimatedTimeHours(estimatedTime);
 
@@ -284,5 +303,24 @@ public class AIAnalysisService {
                 .stream()
                 .map(SearchHit::getContent)
                 .collect(Collectors.toList());
+    }
+
+    private String determineBugSeverityWithAI(String title, String description, BugType bugType) {
+        SystemPromptTemplate promptTemplate = new SystemPromptTemplate(SEVERITY_ANALYSIS_PROMPT);
+        Prompt prompt = promptTemplate.create(Map.of(
+                "title", title,
+                "description", description,
+                "bugType", bugType
+        ));
+
+        String response = chatClient.prompt(prompt).call().content();
+        String severity = response.trim().toUpperCase();
+
+        if (Set.of("CRITICAL", "HIGH", "MEDIUM", "LOW").contains(severity)) {
+            return severity;
+        } else {
+            log.warn("AI returned invalid severity: {}", response);
+            return "MEDIUM";
+        }
     }
 }
