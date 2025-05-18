@@ -6,6 +6,7 @@ import com.swayam.bugwise.entity.Organization;
 import com.swayam.bugwise.entity.Project;
 import com.swayam.bugwise.entity.User;
 import com.swayam.bugwise.enums.BugStatus;
+import com.swayam.bugwise.enums.NotificationType;
 import com.swayam.bugwise.enums.ProjectStatus;
 import com.swayam.bugwise.enums.UserRole;
 import com.swayam.bugwise.exception.ValidationException;
@@ -36,6 +37,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final OrganizationRepository organizationRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -104,6 +106,21 @@ public class ProjectService {
         dto.setAssignedUsers(updatedProject.getAssignedUsers().stream()
                 .map(user -> DTOConverter.convertToDTO(user, UserDetailsDTO.class))
                 .collect(Collectors.toSet()));
+
+        NotificationMessageDTO message = new NotificationMessageDTO(
+                NotificationType.PROJECT_ASSIGNED,
+                "Project Assignment",
+                "You've been added to project: " + project.getName(),
+                Map.of(
+                        "projectId", projectId,
+                        "projectName", project.getName()
+                ),
+                dto.getAssignedUsers().stream().map(UserDetailsDTO::getEmail).toList(),
+                new NotificationMessageDTO.InAppDetails("/projects/" + projectId, "project-icon.png")
+        );
+
+        notificationService.sendNotification(message);
+
         return dto;
     }
 

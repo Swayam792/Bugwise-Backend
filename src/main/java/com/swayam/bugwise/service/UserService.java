@@ -14,8 +14,8 @@ import com.swayam.bugwise.repository.jpa.OrganizationRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import com.swayam.bugwise.utils.DTOConverter;
 
-import groovy.util.logging.Slf4j;
 import jakarta.persistence.LockModeType;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.repository.Lock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;

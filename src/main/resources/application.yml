@@ -13,6 +13,7 @@
       password: ${DB_PASSWORD}
       driver-class-name: org.postgresql.Driver
     jpa:
+      database-platform: org.hibernate.dialect.PostgreSQLDialect
       hibernate:
         ddl-auto: update
       properties:
@@ -43,23 +44,16 @@
           options:
             model: llama3-70b-8192
             temperature: 0.7
-    kafka:
-      consumer:
-        auto-offset-reset: earliest
-        bootstrap-servers: localhost:29092
-        group-id: bugwise-chat-group
-        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-        enable-auto-commit: false
-        properties:
-          spring.json.use.type.headers: true
-          spring.json.trusted.packages: "com.swayam.bugwise.entity,com.swayam.bugwise.dto,java.util,java.time"
-      producer:
-        acks: -1
-        bootstrap-servers: localhost:29092
-        key-serializer: org.apache.kafka.common.serialization.StringSerializer
-        value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-        compression-type: gzip
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    listener:
+      simple:
+        prefetch: 1
+        concurrency: 1
+        max-concurrency: 5
 
   security:
     jwt:

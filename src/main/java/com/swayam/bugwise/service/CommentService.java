@@ -1,9 +1,11 @@
 package com.swayam.bugwise.service;
 
 import com.swayam.bugwise.dto.CommentRequestDTO;
+import com.swayam.bugwise.dto.NotificationMessageDTO;
 import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.entity.Comment;
 import com.swayam.bugwise.entity.User;
+import com.swayam.bugwise.enums.NotificationType;
 import com.swayam.bugwise.exception.ResourceNotFoundException;
 import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.jpa.BugRepository;
@@ -18,6 +20,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -30,17 +33,38 @@ public class CommentService {
     private final BugRepository bugRepository;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    public void createComment(CommentRequestDTO request) {
+    public void createComment(CommentRequestDTO request, String updatedBy) {
         Bug bug = bugRepository.findById(request.getBugId())
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
 
         Comment comment = new Comment();
         comment.setContent(request.getContent());
         comment.setBug(bug);
-        comment.setUser(userService.getCurrentUser());
+        comment.setUser(userRepository.findByEmail(updatedBy).get());
+
+        List<String> userList = new ArrayList<>();
+        if(bug.getAssignedDeveloper() != null){
+            userList.addAll(bug.getAssignedDeveloper().stream().map(User::getEmail).toList());
+        }
+        userList.add(bug.getReportedBy().getEmail());
+
+        NotificationMessageDTO message = new NotificationMessageDTO(
+                NotificationType.COMMENT_ADDED,
+                "Comment Added",
+                "New Comment on Bug",
+                Map.of(
+                        "bugId", request.getBugId(),
+                        "commentAuthor", updatedBy
+                ),
+                userList,
+                new NotificationMessageDTO.InAppDetails("/bugs/" + request.getBugId(), "comment-icon.png")
+        );
+
+        notificationService.sendNotification(message);
 
         commentRepository.save(comment);
     }

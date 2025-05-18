@@ -2,10 +2,7 @@ package com.swayam.bugwise.service;
 
 import com.swayam.bugwise.dto.*;
 import com.swayam.bugwise.entity.*;
-import com.swayam.bugwise.enums.BugSeverity;
-import com.swayam.bugwise.enums.BugStatus;
-import com.swayam.bugwise.enums.DeveloperType;
-import com.swayam.bugwise.enums.UserRole;
+import com.swayam.bugwise.enums.*;
 import com.swayam.bugwise.exception.ValidationException;
 import com.swayam.bugwise.repository.elasticsearch.BugDocumentRepository;
 import com.swayam.bugwise.repository.jpa.BugRepository;
@@ -13,7 +10,6 @@ import com.swayam.bugwise.repository.jpa.ProjectRepository;
 import com.swayam.bugwise.repository.jpa.UserRepository;
 import com.swayam.bugwise.utils.DTOConverter;
 
-import co.elastic.clients.elasticsearch.security.get_role.Role;
 import jakarta.persistence.LockModeType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +42,7 @@ public class BugService {
     private final UserRepository userRepository;
     private final ProjectRepository projectRepository;
     private final ElasticsearchOperations elasticsearchOperations;
+    private final NotificationService notificationService;
 
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -67,13 +64,24 @@ public class BugService {
 
         Bug savedBug = bugRepository.save(bug);
         indexBugInElasticsearch(savedBug);
+
+        NotificationMessageDTO message = new NotificationMessageDTO(
+                NotificationType.BUG_CREATED,
+                "New Bug Created",
+                "A new bug has been reported",
+                Map.of("bugId", "123"),
+                List.of("user1", "user2"),
+                new NotificationMessageDTO.InAppDetails("/bugs/123", "bug-icon.png")
+        );
+        notificationService.sendNotification(message);
+
         return savedBug;
     }
 
     @CachePut(value = "bugs", key = "#bugId")
     @Transactional
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    public BugDTO updateBug(String bugId, BugRequestDTO request) {
+    public BugDTO updateBug(String bugId, BugRequestDTO request, String updatedBy) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
         validateUserCanUpdateBug(bug);
@@ -94,9 +102,28 @@ public class BugService {
             bug.setActualTimeHours(request.getActualTimeHours());
         }
 
-
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
+
+        List<String> notificationUserList = new ArrayList<>(List.of(bug.getProject().getProjectManager().getEmail()));
+        notificationUserList.addAll(bug.getAssignedDeveloper().stream().map(User::getEmail).collect(Collectors.toList()));
+
+        NotificationMessageDTO message = new NotificationMessageDTO(
+                NotificationType.BUG_UPDATED,
+                "Bug Updated",
+                "Bug updated: " + request.getTitle(),
+                Map.of(
+                        "bugId", bug.getId(),
+                        "title", request.getTitle(),
+                        "severity", request.getSeverity(),
+                        "updatedBy", updatedBy
+                ),
+                notificationUserList,
+                new NotificationMessageDTO.InAppDetails("/bugs/" + bug.getId(), "bug-icon.png")
+        );
+
+        notificationService.sendNotification(message);
+
         return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 
@@ -204,18 +231,61 @@ public class BugService {
 
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
+
+        NotificationMessageDTO message = new NotificationMessageDTO(
+                NotificationType.BUG_ASSIGNED,
+                "Bug Assigned",
+                "You've been assigned to a bug: " + bug.getTitle(),
+                Map.of(
+                        "bugId", bugId,
+                        "title", bug.getTitle(),
+                        "severity", bug.getSeverity()
+                ),
+                developerEmails,
+                new NotificationMessageDTO.InAppDetails("/bugs/" + bugId, "assignment-icon.png")
+        );
+
+        notificationService.sendNotification(message);
+
         return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 
     @CacheEvict(value = "bugs", key = "#bugId")
-    public BugDTO updateBugStatus(String bugId, BugStatus newStatus) {
+    public BugDTO updateBugStatus(String bugId, BugStatus newStatus, String currentUser) {
         Bug bug = bugRepository.findById(bugId)
                 .orElseThrow(() -> new NoSuchElementException("Bug not found"));
+        BugStatus oldStatus = bug.getStatus();
         validateStatusTransition(bug, newStatus);
 
         bug.setStatus(newStatus);
         Bug updatedBug = bugRepository.save(bug);
         indexBugInElasticsearch(updatedBug);
+
+        if (!newStatus.equals(oldStatus)) {
+            List<String> notificationUserList = new ArrayList<>();
+            String managereEmail = bug.getProject().getProjectManager().getEmail();
+            if(!currentUser.equals(managereEmail)){
+                notificationUserList.add(managereEmail);
+            }
+            notificationUserList.addAll(bug.getAssignedDeveloper().stream().map(User::getEmail).filter(email -> !email.equals(currentUser)).toList());
+
+            NotificationMessageDTO message = new NotificationMessageDTO(
+                    NotificationType.BUG_STATUS_CHANGED,
+                    "Bug Status Changed",
+                    "Bug status: " + newStatus,
+                    Map.of(
+                            "bugId", bug.getId(),
+                            "title", bug.getTitle(),
+                            "severity", bug.getSeverity(),
+                            "updatedBy", currentUser
+                    ),
+                    notificationUserList,
+                    new NotificationMessageDTO.InAppDetails("/bugs/" + bug.getId(), "bug-icon.png")
+            );
+
+            notificationService.sendNotification(message);
+        }
+
         return DTOConverter.convertToDTO(updatedBug, BugDTO.class);
     }
 

@@ -63,24 +63,6 @@ public class ChatService {
         messagingTemplate.convertAndSend("/topic/bug." + bugId + ".typing", notification);
     }
 
-//    public void sendJoinNotification(String bugId, String username) {
-//        log.info("User {} joined bug chat {}", username, bugId);
-//        Map<String, Object> notification = Map.of(
-//                "username", username,
-//                "timestamp", LocalDateTime.now()
-//        );
-//        messagingTemplate.convertAndSend("/topic/bug." + bugId + ".join", notification);
-//    }
-//
-//    public void sendLeaveNotification(String bugId, String username) {
-//        log.info("User {} left bug chat {}", username, bugId);
-//        Map<String, Object> notification = Map.of(
-//                "username", username,
-//                "timestamp", LocalDateTime.now()
-//        );
-//        messagingTemplate.convertAndSend("/topic/bug." + bugId + ".leave", notification);
-//    }
-
     public void markMessagesAsRead(String bugId, String username) {
         log.info("User {} marked messages as read in bug {}", username, bugId);
         Map<String, Object> notification = Map.of(

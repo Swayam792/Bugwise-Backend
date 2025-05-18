@@ -1,14 +1,13 @@
 package com.swayam.bugwise.controller;
 
 import com.swayam.bugwise.dto.*;
-import com.swayam.bugwise.entity.Bug;
 import com.swayam.bugwise.enums.BugSeverity;
 import com.swayam.bugwise.enums.BugStatus;
 import com.swayam.bugwise.service.AIAnalysisService;
 import com.swayam.bugwise.service.BugService;
-import groovy.util.logging.Slf4j;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,8 +35,8 @@ public class BugController {
 
     @PutMapping("/{bugId}")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'PROJECT_MANAGER')")
-    public ResponseEntity<?> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request) {
-        bugService.updateBug(bugId, request);
+    public ResponseEntity<?> updateBug(@PathVariable String bugId, @Valid @RequestBody BugRequestDTO request, Authentication authentication) {
+        bugService.updateBug(bugId, request, authentication.getName());
         return ResponseEntity.ok().build();
     }
 
@@ -48,8 +47,8 @@ public class BugController {
 
     @PostMapping("/{bugId}/status")
     @PreAuthorize("hasAnyRole('DEVELOPER', 'TESTER', 'PROJECT_MANAGER')")
-    public ResponseEntity<BugDTO> updateBugStatus(@PathVariable String bugId, @RequestParam BugStatus status) {
-        return ResponseEntity.ok(bugService.updateBugStatus(bugId, status));
+    public ResponseEntity<BugDTO> updateBugStatus(@PathVariable String bugId, @RequestParam BugStatus status, Authentication authentication) {
+        return ResponseEntity.ok(bugService.updateBugStatus(bugId, status, authentication.getName()));
     }
 
     @GetMapping("/project/{projectId}/search")

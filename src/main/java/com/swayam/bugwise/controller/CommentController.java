@@ -20,8 +20,8 @@ public class CommentController {
     private final CommentService commentService;
 
     @PostMapping
-    public ResponseEntity<Void> createComment(@Valid @RequestBody CommentRequestDTO request) {
-        commentService.createComment(request);
+    public ResponseEntity<Void> createComment(@Valid @RequestBody CommentRequestDTO request, Authentication authentication) {
+        commentService.createComment(request, authentication.getName());
         return ResponseEntity.ok().build();
     }
 
