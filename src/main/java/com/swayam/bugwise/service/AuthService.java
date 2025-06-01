@@ -33,7 +33,6 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
-    private final OrganizationRepository organizationRepository;
     private final CustomUserDetailsService userDetailsService;
 
     public AuthResponseDTO login(LoginRequestDTO loginRequest) {
